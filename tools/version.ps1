@@ -4,7 +4,9 @@ param (
   [Parameter(Position = 0, Mandatory = $false)]
   [string]$BuildRoot = $null,
   [Parameter(Position = 1, Mandatory = $false)]
-  [string]$SourceRoot = $null
+  [string]$SourceRoot = $null,
+  [Parameter(Position = 2, Mandatory = $false)]
+  [string]$Mode = ''
 )
 
 $lastSvnRevision = 6962
@@ -13,7 +15,21 @@ $defineNumberMatch = [regex] '^#define\s+(\w+)\s+(\d+)$'
 $defineStringMatch = [regex] "^#define\s+(\w+)\s+[`"']?(.+?)[`"']?$"
 $semVerMatch = [regex] 'v?(\d+)\.(\d+).(\d+)(?:-(\w+))?'
 
-$repositoryRootPath = Join-Path $PSScriptRoot .. | Resolve-Path
+if ($SourceRoot -and (Test-Path -LiteralPath $SourceRoot)) {
+  $repositoryRootPath = (Resolve-Path -LiteralPath $SourceRoot).Path
+} else {
+  $repositoryRootPath = (Join-Path $PSScriptRoot .. | Resolve-Path).Path
+}
+
+# meson dist runs this script with "dist" as the third argument and expects
+# git_version.h to be written into the staged source tree.
+if ($Mode -eq 'dist') {
+  if (!$Env:MESON_PROJECT_DIST_ROOT) {
+    throw 'MESON_PROJECT_DIST_ROOT is not set'
+  }
+  $BuildRoot = $Env:MESON_PROJECT_DIST_ROOT
+}
+
 if (!(git -C $repositoryRootPath rev-parse --is-inside-work-tree 2>$null)) {
   throw "$repositoryRootPath is not a git repository"
 }
