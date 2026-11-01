@@ -13,6 +13,23 @@ released under the same BSD 3-Clause terms.
 Source and build information: see `SOURCE.txt` and
 `tools/windows-build.ps1`.
 
+## Building the Qt 6 client
+
+The Qt rewrite (`src/app`) builds with CMake and is independent of the
+Meson/wxWidgets Aegisub build. All toolchains are workspace-local:
+
+1. Qt 6.5+ (MSVC 2022 x64) is installed under `.toolchain/qt`. For example:
+   `.venv\Scripts\aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 --outputdir .toolchain\qt --modules qt5compat`
+2. Configure, build and test from a normal PowerShell prompt:
+   `powershell -ExecutionPolicy Bypass -File tools/windows-qt-build.ps1`
+3. Run the client after adding the Qt runtime to `PATH`:
+   `.toolchain\qt\<version>\msvc2022_64\bin`, then
+   `build-app\src\app\danket-sub.exe` (`--palette <file>` loads a theme).
+
+CMake pins RibbonUI and QWindowKit and fetches them at configure time. Pass
+`-DDANKET_BUILD_DESKTOP=OFF` to build only `libdanketsub-core`. Theme palette
+format and fallback behaviour are documented in `docs/theme-palette.md`.
+
 ---
 
 # Aegisub

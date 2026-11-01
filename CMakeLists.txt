@@ -1,6 +1,8 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22)
 
-project(DanketSubCore LANGUAGES CXX)
+project(DanketSub VERSION 0.1.0 LANGUAGES CXX)
+
+option(DANKET_BUILD_DESKTOP "Build the Qt 6 desktop client" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -64,3 +66,7 @@ add_test(NAME danket_core_tests
     COMMAND danket_core_tests
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/core
 )
+
+if(DANKET_BUILD_DESKTOP)
+    add_subdirectory(src/app)
+endif()
