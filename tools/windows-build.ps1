@@ -41,6 +41,7 @@ foreach ($tool in @($meson, $ninja)) {
 
 # Put the isolated helper tools first on PATH.
 $toolDirs = @(
+    (Join-Path $root '.toolchain\7zip'),
     (Join-Path $root '.toolchain\bin'),
     (Join-Path $root '.toolchain\innosetup\app'),
     (Join-Path $root '.toolchain\gettext\bin')
