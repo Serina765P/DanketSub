@@ -23,19 +23,23 @@ Name: "checkforupdates"; Description: "{cm:CheckForUpdates}"; GroupDescription: 
 
 [Files]
 ; main
-DestDir: {app}; Source: "{#BUILD_ROOT}\aegisub.exe"; Flags: ignoreversion; Components: main
+DestDir: {app}; Source: "{#BUILD_ROOT}\danketsub.exe"; Flags: ignoreversion; Components: main
 DestDir: {app}; Source: "{#INSTALLER_DIR}\license.txt"; Flags: ignoreversion; Components: main
+DestDir: {app}; Source: "{#SOURCE_ROOT}\LICENCE"; Flags: ignoreversion; Components: main
+DestDir: {app}; Source: "{#SOURCE_ROOT}\COPYING"; Flags: ignoreversion; Components: main
+DestDir: {app}; Source: "{#SOURCE_ROOT}\THIRD-PARTY-NOTICES.txt"; Flags: ignoreversion; Components: main
+DestDir: {app}; Source: "{#SOURCE_ROOT}\SOURCE.txt"; Flags: ignoreversion; Components: main
 
 [Icons]
-Name: {commonprograms}\Aegisub; Filename: {app}\aegisub.exe; WorkingDir: {app}; IconIndex: 0; Tasks: startmenuicon; Comment: Create and edit subtitle files
+Name: {commonprograms}\DanketSub; Filename: {app}\danketsub.exe; WorkingDir: {app}; IconIndex: 0; Tasks: startmenuicon; Comment: Create and edit subtitle files
 
 [Registry]
-; Register in App Paths so the user can conveniently enter 'aegisub' in their Run box
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\aegisub.exe"; ValueType: string; ValueName: ""; ValueData: "{app}\aegisub.exe"; Flags: uninsdeletekey
-Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\aegisub.exe"; ValueType: string; ValueName: ""; ValueData: "{app}\aegisub.exe"; Flags: uninsdeletekey
+; Register in App Paths so the user can conveniently enter 'danketsub' in their Run box
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\danketsub.exe"; ValueType: string; ValueName: ""; ValueData: "{app}\danketsub.exe"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\danketsub.exe"; ValueType: string; ValueName: ""; ValueData: "{app}\danketsub.exe"; Flags: uninsdeletekey
 
 [Run]
-Filename: {app}\aegisub.exe; Description: {cm:LaunchProgram,Aegisub}; Flags: nowait postinstall skipifsilent
+Filename: {app}\danketsub.exe; Description: {cm:LaunchProgram,DanketSub}; Flags: nowait postinstall skipifsilent
 
 [InstallDelete]
 Type: files; Name: "{app}\ffms2_64.dll"

@@ -1,4 +1,4 @@
-project('Aegisub', ['c', 'cpp'],
+project('DanketSub', ['c', 'cpp'],
         license: 'BSD-3-Clause',
         meson_version: '>=0.60.0',
         default_options: [
@@ -20,7 +20,7 @@ project('Aegisub', ['c', 'cpp'],
             'luajit:lua52compat=true',
             'luajit:luajit=false',
         ],
-        version: '3.5.1')
+        version: '0.0.0')
 
 cmake = import('cmake')
 fs = import('fs')
@@ -576,12 +576,12 @@ aegisub_c_pch = ['src/include/agi_pre_c.h']
 link_args = []
 link_depends = []
 if host_machine.system() == 'windows'
-    manifest_file = configure_file(copy: true, input: 'src/res/aegisub.exe.manifest', output: 'aegisub.exe.manifest')
+    manifest_file = configure_file(copy: true, input: 'src/res/danketsub.exe.manifest', output: 'danketsub.exe.manifest')
     link_args += ['/MANIFEST:EMBED', '/MANIFESTINPUT:@0@'.format(manifest_file)]
     link_depends += manifest_file
 endif
 
-aegisub = executable('aegisub', aegisub_src, version_h, libresrc_headers, aegisub_order_dep,
+aegisub = executable('danketsub', aegisub_src, version_h, libresrc_headers, aegisub_order_dep,
                      c_args: aegisub_defines,
                      cpp_args: aegisub_defines,
                      link_with: [libresrc, libaegisub],

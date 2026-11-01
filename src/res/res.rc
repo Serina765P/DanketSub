@@ -51,12 +51,12 @@ BEGIN
     BEGIN
         BLOCK "040904B0" // 0x0409: en-US, 0x04B0: unicode
         BEGIN
-            VALUE "CompanyName",      "Aegisub"
-            VALUE "FileDescription",  "Aegisub subtitle editor"
+            VALUE "CompanyName",      "DanketSub"
+            VALUE "FileDescription",  "DanketSub subtitle editor"
             VALUE "FileVersion",      BUILD_GIT_VERSION_STRING
-            VALUE "InternalName",     "aegisub"
-            VALUE "OriginalFilename", "aegisub.exe"
-            VALUE "ProductName",      "Aegisub"
+            VALUE "InternalName",     "danketsub"
+            VALUE "OriginalFilename", "danketsub.exe"
+            VALUE "ProductName",      "DanketSub"
             VALUE "ProductVersion",   BUILD_GIT_VERSION_STRING
         END
     END

@@ -1,0 +1,26 @@
+DanketSub 0.0.0 - source code
+=============================
+
+Repository:  https://github.com/Serina765P/DanketSub
+Tag:         v0.0.0
+Source:      https://github.com/Serina765P/DanketSub/archive/refs/tags/v0.0.0.tar.gz
+
+Each release also ships a meson-generated source archive named
+DanketSub-0.0.0.tar.xz, produced with:
+
+    meson dist --include-subprojects -C build
+
+That archive contains this repository plus every dependency source tree
+pinned by the subprojects/*.wrap files (wxWidgets, Boost, FFmpeg, FFMS2,
+FriBidi, libiconv, HarfBuzz, FreeType, libass, LuaJIT, dav1d, ICU,
+Hunspell, uchardet, zlib, libpng, Expat, LuaBinaries, CSRI).
+
+DanketSub is an unofficial modification of Aegisub 3.5.1:
+    https://github.com/TypesettingTools/Aegisub
+
+The Windows binaries are distributed under the GNU General Public License
+version 2. The complete corresponding source code for the binaries is the
+archive described above; the original Aegisub source remains BSD 3-Clause.
+
+Build instructions: tools/windows-build.ps1
+Third-party notices: THIRD-PARTY-NOTICES.txt

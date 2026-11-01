@@ -7,15 +7,15 @@
 #include BUILD_ROOT + "\git_version.h"
 
 [Setup]
-AppName=Aegisub
-AppVerName=Aegisub {#BUILD_GIT_VERSION_STRING}
+AppName=DanketSub
+AppVerName=DanketSub {#BUILD_GIT_VERSION_STRING}
 AppVersion={#INSTALLER_VERSION}
-AppPublisher=Aegisub Team
-AppPublisherURL=http://aegisub.org/
-AppSupportURL=https://github.com/TypesettingTools/Aegisub/issues
-AppCopyright=2005-{#CURRENT_YEAR} The Aegisub Team
+AppPublisher=Serina765P
+AppPublisherURL=https://github.com/Serina765P/DanketSub
+AppSupportURL=https://github.com/Serina765P/DanketSub/issues
+AppCopyright=2005-{#CURRENT_YEAR} The Aegisub Team; modifications 2026 Serina765P
 VersionInfoVersion={#INSTALLER_VERSION}
-DefaultGroupName=Aegisub
+DefaultGroupName=DanketSub
 AllowNoIcons=true
 OutputDir={#BUILD_ROOT}
 Compression=lzma/ultra64
@@ -29,14 +29,14 @@ UsePreviousSetupType=no
 UsePreviousAppDir=yes
 UsePreviousTasks=no
 UsedUserAreasWarning=no
-UninstallDisplayIcon={app}\aegisub.exe
+UninstallDisplayIcon={app}\danketsub.exe
 ; Default to a large welcome bitmap, suitable for large fonts
 ; The normal fonts version is selected by code below
 WizardImageFile={#INSTALLER_DIR}\welcome-large.bmp
 WizardSmallImageFile={#INSTALLER_DIR}\aegisub-large.bmp
 
-OutputBaseFilename=Aegisub-{#BUILD_GIT_VERSION_STRING}-{#ARCH}
-VersionInfoDescription=Aegisub {#BUILD_GIT_VERSION_STRING}
+OutputBaseFilename=DanketSub-{#BUILD_GIT_VERSION_STRING}-{#ARCH}
+VersionInfoDescription=DanketSub {#BUILD_GIT_VERSION_STRING}
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"

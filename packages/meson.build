@@ -30,9 +30,9 @@ elif host_machine.system() == 'darwin'
     run_target('osx-notarize',
                command: [notarize_sh, meson.project_source_root(), meson.project_build_root()])
 else
-    aegisub_rdns_developer = 'org.aegisub'
-    aegisub_rdns_name = aegisub_rdns_developer + '.Aegisub'
-    conf_pkg.set('AEGISUB_COMMAND', 'aegisub')
+    aegisub_rdns_developer = 'io.github.serina765p'
+    aegisub_rdns_name = aegisub_rdns_developer + '.danketsub'
+    conf_pkg.set('AEGISUB_COMMAND', 'danketsub')
     conf_pkg.set('AEGISUB_RDNS_DEVELOPER', aegisub_rdns_developer)
     conf_pkg.set('AEGISUB_RDNS_NAME', aegisub_rdns_name)
 

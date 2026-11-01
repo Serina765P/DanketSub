@@ -1,3 +1,20 @@
+# DanketSub
+
+DanketSub is an unofficial, non-commercial modification of
+[Aegisub](https://github.com/TypesettingTools/Aegisub), maintained by
+[Serina765P](https://github.com/Serina765P). It is not affiliated with, or
+endorsed by, the Aegisub project.
+
+Version 0.0.0. DanketSub's Windows binaries are distributed under the GNU
+General Public License version 2 (see `COPYING`). The original Aegisub source
+remains under the BSD 3-Clause license (see `LICENCE`); modifications are
+released under the same BSD 3-Clause terms.
+
+Source and build information: see `SOURCE.txt` and
+`tools/windows-build.ps1`.
+
+---
+
 # Aegisub
 
 For binaries and general information [see the homepage](http://aegisub.org).
@@ -31,7 +48,7 @@ Building:
 2. From the Visual Studio "x64 Native Tools Command Prompt", generate the build directory: `meson build -Ddefault_library=static` (if building for release, add `--buildtype=release`)
 3. Build with `cd build` and `ninja`
 
-You should now have a binary: `aegisub.exe`.
+You should now have a binary: `danketsub.exe`.
 
 Installer:
 
@@ -152,3 +169,8 @@ Some documentation for developers is available in [docs/developer_docs.md](docs/
 
 All files in this repository are licensed under various GPL-compatible BSD-style licenses; see LICENCE and the individual source files for more information.
 The official Windows and OS X builds are GPLv2 due to including fftw3.
+
+DanketSub's Windows packages are distributed under GPLv2 because they
+statically link LGPL-licensed dependencies (FFmpeg/FFMS2, FriBidi, libiconv);
+FFTW3 is disabled in DanketSub builds. See `THIRD-PARTY-NOTICES.txt` and
+`SOURCE.txt`.

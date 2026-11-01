@@ -6,3 +6,10 @@ build*/
 !/subprojects/csri
 !/subprojects/iconv
 !/subprojects/luabins
+
+# Local build environment
+.venv/
+.toolchain/
+.vs_BuildTools.exe
+.install-vs.ps1
+.add-hosts.ps1

@@ -285,7 +285,7 @@ jobs:
         if: matrix.config.os == 'windows-latest' && env.AEGISUB_SIGN_WINDOWS != 'true'
         with:
           name: ${{ matrix.config.name }} - installer
-          path: build/Aegisub-*.exe
+          path: build/DanketSub-*.exe
           if-no-files-found: error
 
       - name: Upload artifacts - portable.zip
@@ -293,7 +293,7 @@ jobs:
         if: matrix.config.os == 'windows-latest' && env.AEGISUB_SIGN_WINDOWS != 'true'
         with:
           name: ${{ matrix.config.name }} - portable
-          path: build/Aegisub-*-portable.zip
+          path: build/DanketSub-*-portable.zip
           if-no-files-found: error
 
       # Release builds are signed and packaged by the windows-* jobs below
@@ -302,7 +302,7 @@ jobs:
         if: env.AEGISUB_SIGN_WINDOWS == 'true'
         with:
           name: Windows signing - unsigned executable
-          path: build/aegisub.exe
+          path: build/danketsub.exe
           if-no-files-found: error
 
       - name: Upload Windows packaging inputs
@@ -314,7 +314,7 @@ jobs:
             build/git_version.h
             build/po/*/LC_MESSAGES/aegisub.mo
             build/installer-deps/
-            build/Aegisub-*-portable.zip
+            build/DanketSub-*-portable.zip
           if-no-files-found: error
 
       # macOS artifacts
@@ -350,7 +350,7 @@ jobs:
         if: startsWith(matrix.config.os, 'macos-') && matrix.config.buildtype == 'release' && (github.ref_type == 'tag' || github.event_name == 'workflow_dispatch')
         with:
           name: ${{ matrix.config.name }} - local signing input
-          path: build/Aegisub-*-signing-input.zip
+          path: build/DanketSub-*-signing-input.zip
           if-no-files-found: error
 
       - name: Upload artifacts - macOS dmg
@@ -358,7 +358,7 @@ jobs:
         if: startsWith(matrix.config.os, 'macos-') && matrix.config.buildtype == 'release'
         with:
           name: ${{ matrix.config.name }} - ad-hoc installer
-          path: build/Aegisub-*.dmg
+          path: build/DanketSub-*.dmg
           if-no-files-found: error
 
       # Tarball
@@ -417,20 +417,20 @@ jobs:
 
       - name: Package signed executable
         run: |
-          Copy-Item signed\aegisub.exe build\aegisub.exe -Force
+          Copy-Item signed\danketsub.exe build\danketsub.exe -Force
           tools\win-installer-setup.ps1 "$PWD\build" "$PWD" x64 -NoBuild
-          packages\win_installer\portable\replace-executable.ps1 (Get-Item build\Aegisub-*-portable.zip) build\aegisub.exe
+          packages\win_installer\portable\replace-executable.ps1 (Get-Item build\DanketSub-*-portable.zip) build\danketsub.exe
 
       - uses: actions/upload-artifact@v7
         with:
           name: Windows signing - unsigned installer
-          path: build/Aegisub-*.exe
+          path: build/DanketSub-*.exe
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v7
         with:
           name: Windows MSVC Release - portable
-          path: build/Aegisub-*-portable.zip
+          path: build/DanketSub-*-portable.zip
           if-no-files-found: error
 
   windows-sign-installer:

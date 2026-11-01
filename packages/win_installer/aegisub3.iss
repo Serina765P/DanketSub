@@ -8,8 +8,8 @@
 #include "fragment_strings.iss"
 
 [Setup]
-AppID={{24BC8B57-716C-444F-B46B-A3349B9164C5}
-DefaultDirName={commonpf}\Aegisub
+AppID={{973E49B9-C1CA-4AF1-BC7C-8BD6BFFBE700}
+DefaultDirName={commonpf}\DanketSub
 PrivilegesRequired=poweruser
 #ifdef ARM64
 ArchitecturesInstallIn64BitMode=arm64

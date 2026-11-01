@@ -26,7 +26,7 @@ function Copy-ToDirectory {
 
 # Keep in sync with the number of Write-Step calls below.
 $script:stepNum = 0
-$script:stepTotal = 11
+$script:stepTotal = 12
 
 # Report progress both via an interactive bar and a textual trail for CI logs.
 function Write-Step {
@@ -47,7 +47,7 @@ if (-not $GitVersionMatch) {
     throw "Could not read BUILD_GIT_VERSION_STRING from $GitVersionHeader"
 }
 $GitVersion = $GitVersionMatch.Matches[0].Groups[1].Value
-$PortableZipPath = Join-Path $BuildRoot "Aegisub-$GitVersion-$Architecture-portable.zip"
+$PortableZipPath = Join-Path $BuildRoot "DanketSub-$GitVersion-$Architecture-portable.zip"
 
 Write-Step 'Removing previous output'
 Remove-Item -LiteralPath $PortableOutputDir -Force -Recurse -ErrorAction SilentlyContinue
@@ -58,7 +58,7 @@ meson install -C $BuildRoot --no-rebuild --destdir $InstallerDir
 if ($LASTEXITCODE -ne 0) { throw "meson install failed (exit $LASTEXITCODE)" }
 
 Write-Step 'Copying executable'
-Copy-ToDirectory $InstallerDir\bin\aegisub.exe  $PortableOutputDir
+Copy-ToDirectory $InstallerDir\bin\danketsub.exe  $PortableOutputDir
 
 Write-Step 'Copying translations'
 Copy-ToDirectory "$InstallerDir\share\locale\*"  "$PortableOutputDir\locale" -Recurse
@@ -88,6 +88,11 @@ Copy-ToDirectory "$InstallerDepsDir\DependencyControl\automation\*"  "$PortableO
 
 Write-Step 'Copying portable config'
 Copy-ToDirectory $SourceRoot\packages\win_installer\portable\config.json  $PortableOutputDir
+
+Write-Step 'Copying license files'
+foreach ($name in @('LICENCE', 'COPYING', 'THIRD-PARTY-NOTICES.txt', 'SOURCE.txt')) {
+    Copy-ToDirectory (Join-Path $SourceRoot $name) $PortableOutputDir
+}
 
 Write-Step 'Creating portable zip'
 Remove-Item -LiteralPath $PortableZipPath -Force -ErrorAction SilentlyContinue

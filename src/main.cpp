@@ -123,16 +123,16 @@ wxDEFINE_EVENT(EVT_CALL_THUNK, ValueEvent<agi::dispatch::Thunk>);
 }
 
 /// Message displayed when an exception has occurred.
-static wxString exception_message = "Oops, Aegisub has crashed!\n\nAn attempt has been made to save a copy of your file to:\n\n%s\n\nAegisub will now close.";
+static wxString exception_message = "Oops, DanketSub has crashed!\n\nAn attempt has been made to save a copy of your file to:\n\n%s\n\nDanketSub will now close.";
 
 /// @brief Gets called when application starts.
 /// @return bool
 bool AegisubApp::OnInit() {
 	// App name (yeah, this is a little weird to get rid of an odd warning)
 #if defined(__WXMSW__) || defined(__WXMAC__)
-	SetAppName("Aegisub");
+	SetAppName("DanketSub");
 #else
-	SetAppName("aegisub");
+	SetAppName("danketsub");
 #endif
 
 	// The logger isn't created on demand on background threads, so force it to

@@ -1,6 +1,6 @@
 #!/usr/bin/env powershell
 
-# Replaces aegisub.exe in a portable zip created by create-portable.ps1, e.g.
+# Replaces danketsub.exe in a portable zip created by create-portable.ps1, e.g.
 # with a signed copy, leaving all other entries untouched.
 
 param (
@@ -16,7 +16,7 @@ $ErrorActionPreference = 'Stop'
 
 $PortableZip = (Resolve-Path -LiteralPath $PortableZip).Path
 $Executable = (Resolve-Path -LiteralPath $Executable).Path
-$EntryName = 'aegisub-portable/aegisub.exe'
+$EntryName = 'aegisub-portable/danketsub.exe'
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [System.IO.Compression.ZipFile]::Open($PortableZip, 'Update')
