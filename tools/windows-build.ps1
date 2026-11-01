@@ -22,6 +22,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Python 3.14's UTF-8 mode decodes localized MSVC output as UTF-8 and crashes
+# Meson's compiler probe on non-English Windows. Use the console code page.
+$env:PYTHONUTF8 = '0'
+$env:PYTHONIOENCODING = 'cp' + (Get-Culture).TextInfo.ANSICodePage
+
 $root = Split-Path $PSScriptRoot -Parent
 $buildDir = Join-Path $root 'build'
 $venv = Join-Path $root '.venv'
