@@ -28,7 +28,7 @@ $Env:BUILD_ROOT = $BuildRoot
 $Env:SOURCE_ROOT = $SourceRoot
 
 $GitHeaders = @{}
-if (Test-Path 'Env:GITHUB_TOKEN') {
+if ($Env:GITHUB_TOKEN) {
 	$GitHeaders = @{ 'Authorization' = 'Bearer ' + $Env:GITHUB_TOKEN }
 }
 
