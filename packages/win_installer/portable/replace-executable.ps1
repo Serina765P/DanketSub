@@ -16,7 +16,7 @@ $ErrorActionPreference = 'Stop'
 
 $PortableZip = (Resolve-Path -LiteralPath $PortableZip).Path
 $Executable = (Resolve-Path -LiteralPath $Executable).Path
-$EntryName = 'aegisub-portable/danketsub.exe'
+$EntryName = 'danketsub-portable/danketsub.exe'
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [System.IO.Compression.ZipFile]::Open($PortableZip, 'Update')

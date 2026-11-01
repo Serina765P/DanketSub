@@ -32,7 +32,7 @@ $script:stepTotal = 12
 function Write-Step {
     param([Parameter(Mandatory)][string]$Status)
     $script:stepNum++
-    Write-Progress -Activity 'Creating portable Aegisub' -Status $Status -PercentComplete (100 * $script:stepNum / $script:stepTotal)
+    Write-Progress -Activity 'Creating portable DanketSub' -Status $Status -PercentComplete (100 * $script:stepNum / $script:stepTotal)
     Write-Host "[$script:stepNum/$script:stepTotal] $Status"
 }
 
@@ -40,7 +40,7 @@ Write-Host "BUILD_ROOT=$BuildRoot"
 Write-Host "SOURCE_ROOT=$SourceRoot"
 $InstallerDir = Join-Path $BuildRoot "install"
 $InstallerDepsDir = Join-Path $BuildRoot "installer-deps"
-$PortableOutputDir = Join-Path $BuildRoot "aegisub-portable"
+$PortableOutputDir = Join-Path $BuildRoot "danketsub-portable"
 $GitVersionHeader = Join-Path $BuildRoot 'git_version.h'
 $GitVersionMatch = Select-String -Path $GitVersionHeader -Pattern '^#define BUILD_GIT_VERSION_STRING "(.+)"$' | Select-Object -First 1
 if (-not $GitVersionMatch) {
@@ -112,5 +112,5 @@ finally {
     $zip.Dispose()
 }
 
-Write-Progress -Activity 'Creating portable Aegisub' -Completed
+Write-Progress -Activity 'Creating portable DanketSub' -Completed
 Write-Host "Done: $PortableZipPath"
