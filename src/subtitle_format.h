@@ -29,10 +29,13 @@
 
 #pragma once
 
+#include "ass_core_error.h"
+
 #include <libaegisub/exception.h>
 #include <libaegisub/fs.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 class AssFile;
@@ -127,5 +130,4 @@ public:
 	static void LoadFormats();
 };
 
-DEFINE_EXCEPTION(SubtitleFormatParseError, agi::InvalidInputException);
 DEFINE_EXCEPTION(UnknownSubtitleFormatError, agi::InvalidInputException);

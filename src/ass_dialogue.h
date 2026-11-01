@@ -36,6 +36,10 @@
 
 #include <array>
 #include <boost/flyweight.hpp>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 enum class AssBlockType {
@@ -167,6 +171,11 @@ public:
 	/// Update the text of the line from parsed blocks
 	void UpdateText(std::vector<std::unique_ptr<AssDialogueBlock>>& blocks);
 	std::string GetEntryData() const;
+
+	/// Get the raw dialogue text
+	std::string_view GetText() const { return Text.get(); }
+	/// Set the raw dialogue text
+	void SetText(std::string_view text) { Text = std::string(text); }
 
 	/// Does this line collide with the passed line?
 	bool CollidesWith(const AssDialogue *target) const;

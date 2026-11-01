@@ -1,18 +1,48 @@
 subdir('libresrc')
 
-aegisub_src = files(
-    'MatroskaParser.c',
-    'aegisublocale.cpp',
+danket_core_src = files(
     'ass_attachment.cpp',
     'ass_dialogue.cpp',
     'ass_entry.cpp',
-    'ass_export_filter.cpp',
-    'ass_exporter.cpp',
     'ass_file.cpp',
-    'ass_karaoke.cpp',
     'ass_override.cpp',
     'ass_parser.cpp',
     'ass_style.cpp',
+    'core/ass_io.cpp',
+    'core/core_context.cpp',
+    'core/undo_manager.cpp',
+)
+
+# Include directory for the GUI-free core API. The public headers live under
+# core/include so that the wx application and external users share one entry
+# point.
+danket_core_inc = include_directories(
+    'core/include',
+    '.',
+    '../libaegisub/include',
+    '..',
+)
+
+danket_core = static_library('danket_core', danket_core_src, aegisub_order_dep,
+                             c_args: aegisub_defines,
+                             cpp_args: aegisub_defines,
+                             include_directories: danket_core_inc,
+                             dependencies: boost_dep,
+                             link_with: libaegisub)
+
+danket_core_dep = declare_dependency(
+    link_with: [danket_core, libaegisub],
+    include_directories: danket_core_inc,
+    dependencies: boost_dep,
+)
+
+aegisub_src = files(
+    'MatroskaParser.c',
+    'aegisublocale.cpp',
+    'ass_export_filter.cpp',
+    'ass_exporter.cpp',
+    'ass_file_ui.cpp',
+    'ass_karaoke.cpp',
     'ass_style_storage.cpp',
     'async_video_provider.cpp',
     'audio_box.cpp',

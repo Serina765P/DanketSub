@@ -326,7 +326,7 @@ bool DialogSpellChecker::CheckLine(AssDialogue *active_line, int start_pos, int 
 
 		text.replace(word_start, word_len, auto_rep->second);
 		active_line->Text = text;
-		*commit_id = context->ass->Commit(_("spell check replace"), AssFile::COMMIT_DIAG_TEXT, *commit_id);
+		*commit_id = context->ass->Commit(from_wx(_("spell check replace")), AssFile::COMMIT_DIAG_TEXT, *commit_id);
 		word_start += auto_rep->second.size();
 	}
 	return false;
@@ -340,7 +340,7 @@ void DialogSpellChecker::Replace() {
 		std::string text = active_line->Text;
 		text.replace(word_start, word_len, from_wx(replace_word->GetValue()));
 		active_line->Text = text;
-		context->ass->Commit(_("spell check replace"), AssFile::COMMIT_DIAG_TEXT);
+		context->ass->Commit(from_wx(_("spell check replace")), AssFile::COMMIT_DIAG_TEXT);
 		context->textSelectionController->SetInsertionPoint(word_start + replace_word->GetValue().size());
 	}
 }

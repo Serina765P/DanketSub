@@ -36,16 +36,17 @@
 #include <libaegisub/ycbcr.h>
 
 #include <boost/intrusive/list.hpp>
+#include <cstdint>
 #include <map>
 #include <set>
+#include <string>
+#include <string_view>
 #include <vector>
 
 class AssAttachment;
 class AssDialogue;
 class AssInfo;
 class AssStyle;
-class wxString;
-namespace agi { struct Context; }
 
 template<typename T>
 using EntryList = typename boost::intrusive::make_list<T, boost::intrusive::constant_time_size<false>, boost::intrusive::base_hook<AssEntryListHook>>::type;
@@ -57,7 +58,7 @@ struct ExtradataEntry {
 };
 
 struct AssFileCommit {
-	wxString const& message;
+	std::string_view message;
 	int *commit_id;
 	AssDialogue *single_line;
 };
@@ -106,8 +107,9 @@ public:
 
 	/// @brief Load default file
 	/// @param defline Add a blank line to the file
-	/// @param style_catalog Style catalog name to fill styles from, blank to use default style
-	void LoadDefault(bool defline = true, std::string const& style_catalog = std::string());
+	/// @param play_res_x Width to use for PlayResX, or 0 to omit
+	/// @param play_res_y Height to use for PlayResY, or 0 to omit
+	void LoadDefault(bool defline = true, int play_res_x = 0, int play_res_y = 0);
 	/// Attach a file to the ass file
 	void InsertAttachment(agi::fs::path const& filename);
 	/// Get the names of all of the styles available
@@ -127,10 +129,6 @@ public:
 	/// @param[out] w Width
 	/// @param[in] h Height
 	void GetLayoutResolution(int &w,int &h) const;
-	/// @brief Get the effective layout resolution (i.e. falling back to the video resolution, if present)
-	/// @param[out] w Width
-	/// @param[in] h Height
-	void GetEffectiveLayoutResolution(agi::Context *c, int &w,int &h) const;
 	/// Get the value in a [Script Info] key as int, or 0 if it is not present
 	int GetScriptInfoAsInt(std::string_view key) const;
 	/// Get the value in a [Script Info] key as string.
@@ -191,7 +189,7 @@ public:
 	/// @param commitId    Commit to amend rather than pushing a new commit
 	/// @param single_line Line which was changed, if only one line was
 	/// @return Unique identifier for the new undo group
-	int Commit(wxString const& desc, int type, int commitId = -1, AssDialogue *single_line = nullptr);
+	int Commit(std::string_view desc, int type, int commitId = -1, AssDialogue *single_line = nullptr);
 
 	/// Comparison function for use when sorting
 	typedef bool (*CompFunc)(AssDialogue const& lft, AssDialogue const& rgt);

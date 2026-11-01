@@ -30,19 +30,36 @@
 
 #include "ass_dialogue.h"
 
-#include "utils.h"
-
 #include <libaegisub/color.h>
 #include <libaegisub/exception.h>
-#include <libaegisub/format.h>
 #include <libaegisub/split.h>
 #include <libaegisub/string.h>
 
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <functional>
+#include <iomanip>
+#include <sstream>
+
 #include <boost/range/adaptor/filtered.hpp>
 #include <boost/range/adaptor/transformed.hpp>
-#include <functional>
 
 using namespace boost::adaptors;
+
+namespace {
+/// Format a double with up to three decimals, matching utils.cpp's helper
+std::string format_double(double value) {
+	std::ostringstream out;
+	out << std::fixed << std::setprecision(3) << value;
+	std::string str = out.str();
+	size_t pos = str.find_last_not_of('0');
+	if (pos != str.find('.'))
+		++pos;
+	str.erase(str.begin() + pos, str.end());
+	return str;
+}
+}
 
 AssOverrideParameter::AssOverrideParameter(VariableDataType type, AssParameterClass classification)
 : type(type)
@@ -66,7 +83,7 @@ template<> std::string AssOverrideParameter::Get<std::string>() const {
 template<> int AssOverrideParameter::Get<int>() const {
 	if (classification == AssParameterClass::ALPHA)
 		// &Hxx&, but vsfilter lets you leave everything out
-		return mid<int>(0, strtol(std::find_if(value.c_str(), value.c_str() + value.size(), isxdigit), nullptr, 16), 255);
+		return std::clamp<int>(strtol(std::find_if(value.c_str(), value.c_str() + value.size(), isxdigit), nullptr, 16), 0, 255);
 	return atoi(Get<std::string>().c_str());
 }
 
@@ -101,14 +118,17 @@ template<> void AssOverrideParameter::Set<std::string>(std::string new_value) {
 }
 
 template<> void AssOverrideParameter::Set<int>(int new_value) {
-	if (classification == AssParameterClass::ALPHA)
-		Set(agi::format("&H%02X&", mid(0, new_value, 255)));
+	if (classification == AssParameterClass::ALPHA) {
+		char value[8];
+		std::snprintf(value, sizeof value, "&H%02X&", std::clamp(new_value, 0, 255));
+		Set(std::string(value));
+	}
 	else
 		Set(std::to_string(new_value));
 }
 
 template<> void AssOverrideParameter::Set<double>(double new_value) {
-	Set(float_to_string(new_value));
+	Set(format_double(new_value));
 }
 
 template<> void AssOverrideParameter::Set<bool>(bool new_value) {

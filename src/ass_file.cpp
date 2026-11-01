@@ -20,18 +20,16 @@
 #include "ass_dialogue.h"
 #include "ass_info.h"
 #include "ass_style.h"
-#include "ass_style_storage.h"
-#include "async_video_provider.h"
-#include "options.h"
-#include "project.h"
-#include "include/aegisub/context.h"
 
 #include <algorithm>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <cassert>
+#include <cstdlib>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 AssFile::AssFile() { }
 
@@ -40,25 +38,18 @@ AssFile::~AssFile() {
 	Events.clear_and_dispose([](AssDialogue *e) { delete e; });
 }
 
-void AssFile::LoadDefault(bool include_dialogue_line, std::string const& style_catalog) {
+void AssFile::LoadDefault(bool include_dialogue_line, int play_res_x, int play_res_y) {
 	Info.emplace_back("Title", "Default Aegisub file");
 	Info.emplace_back("ScriptType", "v4.00+");
 	Info.emplace_back("WrapStyle", "0");
 	Info.emplace_back("ScaledBorderAndShadow", "yes");
-	if (!OPT_GET("Subtitle/Default Resolution/Auto")->GetBool()) {
-		Info.emplace_back("PlayResX", std::to_string(OPT_GET("Subtitle/Default Resolution/Width")->GetInt()));
-		Info.emplace_back("PlayResY", std::to_string(OPT_GET("Subtitle/Default Resolution/Height")->GetInt()));
+	if (play_res_x > 0 && play_res_y > 0) {
+		Info.emplace_back("PlayResX", std::to_string(play_res_x));
+		Info.emplace_back("PlayResY", std::to_string(play_res_y));
 	}
 
 	// Add default style
 	Styles.push_back(*new AssStyle);
-
-	// Add/replace any catalog styles requested
-	if (AssStyleStorage::CatalogExists(style_catalog)) {
-		AssStyleStorage catalog;
-		catalog.LoadCatalog(style_catalog);
-		catalog.ReplaceIntoFile(*this);
-	}
 
 	if (include_dialogue_line)
 		Events.push_back(*new AssDialogue);
@@ -163,18 +154,6 @@ void AssFile::GetLayoutResolution(int &lw, int &lh) const {
 	lh = GetScriptInfoAsInt("LayoutResY");
 }
 
-void AssFile::GetEffectiveLayoutResolution(agi::Context *c, int &lw, int &lh) const {
-	GetLayoutResolution(lw, lh);
-	if (lw == 0 || lh == 0) {
-		if (c->project->VideoProvider()) {
-			lw = c->project->VideoProvider()->GetWidth();
-			lh = c->project->VideoProvider()->GetHeight();
-		} else {
-			GetResolution(lw, lh);
-		}
-	}
-}
-
 std::vector<std::string> AssFile::GetStyles() const {
 	std::vector<std::string> styles;
 	for (auto& style : Styles)
@@ -190,7 +169,7 @@ AssStyle *AssFile::GetStyle(std::string const& name) {
 	return nullptr;
 }
 
-int AssFile::Commit(wxString const& desc, int type, int amend_id, AssDialogue *single_line) {
+int AssFile::Commit(std::string_view desc, int type, int amend_id, AssDialogue *single_line) {
 	if (type == COMMIT_NEW || (type & COMMIT_DIAG_ADDREM) || (type & COMMIT_ORDER)) {
 		int i = 0;
 		for (auto& event : Events)

@@ -15,24 +15,39 @@
 #include "ass_parser.h"
 
 #include "ass_attachment.h"
+#include "ass_core_error.h"
 #include "ass_dialogue.h"
 #include "ass_file.h"
 #include "ass_info.h"
 #include "ass_style.h"
-#include "subtitle_format.h"
 
 #include <libaegisub/ass/string_codec.h>
 #include <libaegisub/ass/uuencode.h>
-#include <libaegisub/util.h>
 
 #include <algorithm>
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/regex.hpp>
+#include <cstdint>
+#include <cstring>
+#include <string>
+#include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <variant>
+
+namespace {
+/// Parse an entire string as `T`, leaving `out` untouched on failure
+template<typename T>
+void try_parse(std::string const& str, T *out) {
+	try {
+		*out = boost::lexical_cast<T>(str);
+	}
+	catch (boost::bad_lexical_cast const &) {
+	}
+}
+}
 
 class AssParser::HeaderToProperty {
 	using field = std::variant<
@@ -71,7 +86,6 @@ public:
 	bool ProcessProperty(AssFile *target, std::string const& key, std::string const& value) {
 		auto it = fields.find(key);
 		if (it != end(fields)) {
-			using namespace agi::util;
 			struct {
 				using result_type = void;
 				ProjectProperties &obj;
@@ -182,8 +196,9 @@ void AssParser::ParseMetadataLine(std::string const& rawdata) {
 }
 
 void AssParser::ParseEventLine(std::string const& data) {
-	if (data.starts_with("Dialogue:") || data.starts_with("Comment:"))
+	if (data.starts_with("Dialogue:") || data.starts_with("Comment:")) {
 		target->Events.push_back(*new AssDialogue(data));
+	}
 }
 
 void AssParser::ParseStyleLine(std::string const& data) {
@@ -214,30 +229,60 @@ void AssParser::ParseGraphicsLine(std::string const& data) {
 void AssParser::ParseExtradataLine(std::string const &rawdata) {
 	std::string data = SanitizeLine(rawdata);
 
-	static const boost::regex matcher("Data:[[:space:]]*(\\d+),([^,]+),(.)(.*)");
-	boost::match_results<std::string::const_iterator> mr;
+	// Equivalent to: Data:[[:space:]]*(\d+),([^,]+),(.)(.*)
+	auto is_space = [](char c) {
+		return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+	};
+	auto is_digit = [](char c) { return c >= '0' && c <= '9'; };
 
-	if (boost::regex_match(data, mr, matcher)) {
-		auto id = boost::lexical_cast<uint32_t>(mr.str(1));
-		auto key = agi::ass::inline_string_decode(mr.str(2));
-		auto valuetype = mr.str(3);
-		auto value = mr.str(4);
-		if (valuetype == "e") {
-			// escaped/inline_string encoded
-			value = agi::ass::inline_string_decode(value);
-		} else if (valuetype == "u") {
-			// ass uuencoded
-			auto valuedata = agi::ass::UUDecode(value.c_str(), value.c_str() + value.size());
-			value = std::string(valuedata.begin(), valuedata.end());
-		} else {
-			// unknown, error?
-			value = "";
-		}
+	if (!data.starts_with("Data:")) return;
 
-		// ensure next_extradata_id is always at least 1 more than the largest existing id
-		target->next_extradata_id = std::max(id+1, target->next_extradata_id);
-		target->Extradata.push_back(ExtradataEntry{id, std::move(key), std::move(value)});
+	size_t pos = strlen("Data:");
+	while (pos < data.size() && is_space(data[pos])) ++pos;
+
+	size_t id_begin = pos;
+	while (pos < data.size() && is_digit(data[pos])) ++pos;
+	if (pos == id_begin) return;
+
+	size_t id_end = pos;
+	if (pos >= data.size() || data[pos] != ',') return;
+	++pos;
+
+	size_t key_begin = pos;
+	while (pos < data.size() && data[pos] != ',') ++pos;
+	if (pos == key_begin || pos >= data.size()) return;
+
+	uint32_t id;
+	try {
+		id = boost::lexical_cast<uint32_t>(data.substr(id_begin, id_end - id_begin));
 	}
+	catch (boost::bad_lexical_cast const &) {
+		throw SubtitleFormatParseError("Malformed extradata id");
+	}
+	std::string key = agi::ass::inline_string_decode(data.substr(key_begin, pos - key_begin));
+	++pos;
+
+	// The value type is always exactly one character, which may be followed by
+	// an empty value
+	if (pos >= data.size()) return;
+	char valuetype = data[pos++];
+	std::string value = data.substr(pos);
+
+	if (valuetype == 'e') {
+		// escaped/inline_string encoded
+		value = agi::ass::inline_string_decode(value);
+	} else if (valuetype == 'u') {
+		// ass uuencoded
+		auto valuedata = agi::ass::UUDecode(value.c_str(), value.c_str() + value.size());
+		value = std::string(valuedata.begin(), valuedata.end());
+	} else {
+		// unknown, error?
+		value = "";
+	}
+
+	// ensure next_extradata_id is always at least 1 more than the largest existing id
+	target->next_extradata_id = std::max(id+1, target->next_extradata_id);
+	target->Extradata.push_back(ExtradataEntry{id, std::move(key), std::move(value)});
 }
 
 std::string AssParser::SanitizeLine(std::string const& data) {

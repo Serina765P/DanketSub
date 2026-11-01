@@ -33,6 +33,7 @@
 #include "audio_rendering_style.h"
 #include "audio_timing.h"
 #include "command/command.h"
+#include "compat.h"
 #include "include/aegisub/context.h"
 #include "options.h"
 #include "pen.h"
@@ -511,13 +512,13 @@ void AudioTimingControllerDialogue::DoCommit(bool user_triggered)
 		commit_connection.Block();
 		if (user_triggered)
 		{
-			context->ass->Commit(_("timing"), AssFile::COMMIT_DIAG_TIME);
+			context->ass->Commit(from_wx(_("timing")), AssFile::COMMIT_DIAG_TIME);
 			commit_id = -1; // never coalesce with a manually triggered commit
 		}
 		else
 		{
 			AssDialogue *amend = modified_lines.size() == 1 ? (*modified_lines.begin())->GetLine() : nullptr;
-			commit_id = context->ass->Commit(_("timing"), AssFile::COMMIT_DIAG_TIME, commit_id, amend);
+			commit_id = context->ass->Commit(from_wx(_("timing")), AssFile::COMMIT_DIAG_TIME, commit_id, amend);
 		}
 
 		commit_connection.Unblock();

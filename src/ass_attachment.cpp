@@ -17,11 +17,13 @@
 #include "ass_attachment.h"
 
 #include <libaegisub/ass/uuencode.h>
-#include <libaegisub/file_mapping.h>
-#include <libaegisub/io.h>
 #include <libaegisub/string.h>
 
 #include <boost/algorithm/string/predicate.hpp>
+
+#include <fstream>
+#include <iterator>
+#include <string>
 
 // Out-of-line to anchor vtable
 AssEntryGroup AssAttachment::Group() const { return group; }
@@ -47,10 +49,15 @@ AssAttachment::AssAttachment(agi::fs::path const& name, AssEntryGroup group)
 	if (boost::iends_with(filename.get(), ".ttf"))
 		filename = filename.get().substr(0, filename.get().size() - 4) + "_0" + filename.get().substr(filename.get().size() - 4);
 
-	agi::read_file_mapping file(name);
-	auto buff = file.read();
+	std::ifstream file(name, std::ios::binary);
+	if (!file)
+		throw agi::fs::FileNotFound(name);
+	std::string file_data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	if (file.bad())
+		throw agi::fs::FileNotAccessible(name);
+
 	entry_data = agi::Str(group == AssEntryGroup::FONT ? "fontname: " : "filename: ", filename.get(), "\r\n",
-		agi::ass::UUEncode(buff, buff + file.size()));
+		agi::ass::UUEncode(file_data.data(), file_data.data() + file_data.size()));
 }
 
 size_t AssAttachment::GetSize() const {
@@ -63,7 +70,14 @@ void AssAttachment::Extract(agi::fs::path const& filename) const {
 	auto const& data = entry_data.get();
 	auto header_end = data.find('\n');
 	auto decoded = agi::ass::UUDecode(data.c_str() + header_end + 1, &data.back() + 1);
-	agi::io::Save(filename, true).Get().write(decoded.data(), decoded.size());
+
+	std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+	if (!file)
+		throw agi::fs::FileNotAccessible(filename);
+	file.write(decoded.data(), decoded.size());
+	file.close();
+	if (!file)
+		throw agi::fs::FileNotAccessible(filename);
 }
 
 std::string AssAttachment::GetFileName(bool raw) const {

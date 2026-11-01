@@ -173,8 +173,35 @@ DialogStyleEditor::DialogStyleEditor(wxWindow *parent, AssStyle *style, agi::Con
 	wxString borderStyleValues[3] = { _("Outline"), _("Border boxes"), _("Shadow box (libass only)") };
 
 	// Encoding options
+	auto encoding_name = [](AssEncoding const& encoding) -> wxString {
+		switch (encoding.value) {
+			case -1:  return _("Auto-detect base direction (libass only)");
+			case 0:   return _("ANSI");
+			case 1:   return _("Default");
+			case 2:   return _("Symbol");
+			case 77:  return _("Mac");
+			case 128: return _("Shift_JIS");
+			case 129: return _("Hangeul");
+			case 130: return _("Johab");
+			case 134: return _("GB2312");
+			case 136: return _("Chinese BIG5");
+			case 161: return _("Greek");
+			case 162: return _("Turkish");
+			case 163: return _("Vietnamese");
+			case 177: return _("Hebrew");
+			case 178: return _("Arabic");
+			case 186: return _("Baltic");
+			case 204: return _("Russian");
+			case 222: return _("Thai");
+			case 238: return _("East European");
+			case 255: return _("OEM");
+			default:  return to_wx(encoding.name);
+		}
+	};
+
 	wxArrayString encodingStrings;
-	AssStyle::GetEncodings(encodingStrings);
+	for (auto const& encoding : AssStyle::GetEncodings())
+		encodingStrings.Add(wxString::Format("%d - %s", encoding.value, encoding_name(encoding).c_str()));
 
 	// Create sizers
 	wxStaticBoxSizer *NameSizer = new wxStaticBoxSizer(wxHORIZONTAL, this, _("Style Name"));
@@ -468,7 +495,7 @@ void DialogStyleEditor::Apply(bool apply, bool close) {
 			is_new = false;
 		}
 		if (!store)
-			c->ass->Commit(_("style change"), AssFile::COMMIT_STYLES | (did_rename ? AssFile::COMMIT_DIAG_FULL : 0));
+			c->ass->Commit(from_wx(_("style change")), AssFile::COMMIT_STYLES | (did_rename ? AssFile::COMMIT_DIAG_FULL : 0));
 
 		// Update preview
 		if (!close) SubsPreview->SetStyle(*style);

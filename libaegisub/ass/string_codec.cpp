@@ -37,16 +37,23 @@
 
 #include <libaegisub/ass/string_codec.h>
 
-#include <libaegisub/format.h>
+#include <cstdlib>
+#include <string>
+#include <string_view>
 
 namespace agi::ass {
 
 std::string inline_string_encode(std::string_view input) {
+	static const char hex_digits[] = "0123456789ABCDEF";
+
 	std::string output;
 	output.reserve(input.size());
 	for (unsigned char c : input) {
-		if (c <= 0x1F || c == 0x23 || c == 0x2C || c == 0x3A || c == 0x7C)
-			output += agi::format("#%02X", c);
+		if (c <= 0x1F || c == 0x23 || c == 0x2C || c == 0x3A || c == 0x7C) {
+			output += '#';
+			output += hex_digits[c >> 4];
+			output += hex_digits[c & 0xF];
+		}
 		else
 			output += c;
 	}

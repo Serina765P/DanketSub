@@ -34,8 +34,14 @@
 #include <libaegisub/color.h>
 
 #include <array>
+#include <string>
+#include <string_view>
+#include <vector>
 
-class wxArrayString;
+struct AssEncoding {
+	int value;
+	const char *name;
+};
 
 class AssStyle final : public AssEntry, public AssEntryListHook {
 	std::string data;
@@ -70,7 +76,7 @@ public:
 	void UpdateData();
 
 	/// @brief Get a list of valid ASS font encodings
-	static void GetEncodings(wxArrayString &encodingStrings);
+	static std::vector<AssEncoding> GetEncodings();
 
 	AssStyle();
 	AssStyle(std::string_view data, int version=1);

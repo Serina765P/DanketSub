@@ -72,6 +72,16 @@ runner = executable(
     link_with: libaegisub,
 )
 
+danket_core_tests = executable(
+    'danket-core-tests',
+    'core/core_tests.cpp',
+    include_directories: [libaegisub_inc],
+    dependencies: [danket_core_dep],
+    cpp_args: tests_args + conf_defines,
+)
+
+test('danket core', danket_core_tests, workdir: meson.current_source_dir())
+
 # setup test env
 if host_machine.system() == 'windows'
     setup_sh = find_program('setup.bat')

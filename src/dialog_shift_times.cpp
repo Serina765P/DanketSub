@@ -412,7 +412,7 @@ void DialogShiftTimes::Process(wxCommandEvent &) {
 			line.End = Shift(line.End, shift, by_time, agi::vfr::END);
 	}
 
-	context->ass->Commit(_("shifting"), AssFile::COMMIT_DIAG_TIME);
+	context->ass->Commit(from_wx(_("shifting")), AssFile::COMMIT_DIAG_TIME);
 
 	if (block_start) {
 		json::Object block;

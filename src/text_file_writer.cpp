@@ -45,13 +45,17 @@ TextFileWriter::TextFileWriter(agi::fs::path const& filename, std::string encodi
 // Explicit empty destructor required with a unique_ptr to an incomplete class
 TextFileWriter::~TextFileWriter() noexcept(false) = default;
 
-void TextFileWriter::WriteLineToFile(std::string_view line, bool addLineBreak) {
+void TextFileWriter::WriteRaw(std::string_view text) {
 	if (conv) {
-		auto converted = conv->Convert(line);
+		auto converted = conv->Convert(text);
 		file.Get().write(converted.data(), converted.size());
 	}
 	else
-		file.Get().write(line.data(), line.size());
+		file.Get().write(text.data(), text.size());
+}
+
+void TextFileWriter::WriteLineToFile(std::string_view line, bool addLineBreak) {
+	WriteRaw(line);
 
 	if (addLineBreak)
 		file.Get().write(newline.data(), newline.size());

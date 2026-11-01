@@ -550,7 +550,7 @@ void DialogStyleManager::OnCopyToCurrent() {
 		}
 	}
 
-	c->ass->Commit(_("style copy"), AssFile::COMMIT_STYLES);
+	c->ass->Commit(from_wx(_("style copy")), AssFile::COMMIT_STYLES);
 
 	CurrentList->DeselectAll();
 	for (auto const& style_name : copied)
@@ -579,7 +579,7 @@ void DialogStyleManager::PasteToCurrent() {
 		[this](std::string const& str) { return c->ass->GetStyle(str); },
 		[this](AssStyle *s) { c->ass->Styles.push_back(*s); });
 
-	c->ass->Commit(_("style paste"), AssFile::COMMIT_STYLES);
+	c->ass->Commit(from_wx(_("style paste")), AssFile::COMMIT_STYLES);
 }
 
 void DialogStyleManager::PasteToStorage() {
@@ -666,7 +666,7 @@ void DialogStyleManager::OnCurrentDelete() {
 		for (int i = 0; i < n; i++) {
 			delete styleMap.at(selections[i]);
 		}
-		c->ass->Commit(_("style delete"), AssFile::COMMIT_STYLES);
+		c->ass->Commit(from_wx(_("style delete")), AssFile::COMMIT_STYLES);
 	}
 }
 
@@ -734,7 +734,7 @@ void DialogStyleManager::OnCurrentImport() {
 
 	// Update
 	if (modified)
-		c->ass->Commit(_("style import"), AssFile::COMMIT_STYLES);
+		c->ass->Commit(from_wx(_("style import")), AssFile::COMMIT_STYLES);
 }
 
 void DialogStyleManager::UpdateButtons() {
@@ -884,7 +884,7 @@ void DialogStyleManager::MoveStyles(bool storage, int type) {
 			it = new_style_at_pos;
 		}
 
-		c->ass->Commit(_("style move"), AssFile::COMMIT_STYLES);
+		c->ass->Commit(from_wx(_("style move")), AssFile::COMMIT_STYLES);
 	}
 
 	for (int i = 0 ; i < (int)list->GetCount(); ++i) {

@@ -28,23 +28,43 @@
 // Aegisub Project http://www.aegisub.org/
 
 #include "ass_dialogue.h"
-#include "subtitle_format.h"
-#include "utils.h"
+
+#include "ass_core_error.h"
 
 #include <libaegisub/of_type_adaptor.h>
 #include <libaegisub/split.h>
 #include <libaegisub/string.h>
 
+#include <algorithm>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/regex.hpp>
-#include <boost/spirit/include/karma_generate.hpp>
-#include <boost/spirit/include/karma_int.hpp>
+#include <cstdint>
+#include <string>
 #include <string_view>
 
 using namespace boost::adaptors;
 
 static int next_id = 0;
+
+namespace {
+int parse_int(std::string_view value, char const *field) {
+	try {
+		return boost::lexical_cast<int>(std::string(value));
+	}
+	catch (boost::bad_lexical_cast const &) {
+		throw SubtitleFormatParseError(std::string("Failed parsing line: bad ") + field);
+	}
+}
+
+uint32_t parse_uint(std::string_view value, char const *field) {
+	try {
+		return boost::lexical_cast<uint32_t>(std::string(value));
+	}
+	catch (boost::bad_lexical_cast const &) {
+		throw SubtitleFormatParseError(std::string("Failed parsing line: bad ") + field);
+	}
+}
+}
 
 AssDialogue::AssDialogue() {
 	Id = ++next_id;
@@ -105,34 +125,38 @@ void AssDialogue::Parse(std::string const& raw) {
 	bool ssa = boost::istarts_with(tmp, "marked=");
 
 	// Get layer number
-	Layer = ssa ? 0 : boost::lexical_cast<int>(tmp);
+	Layer = ssa ? 0 : parse_int(tmp, "layer");
 
 	Start = agi::Trim(tkn.next_tok());
 	End = agi::Trim(tkn.next_tok());
 	Style = tkn.next_str_trim();
 	Actor = tkn.next_str_trim();
 	for (int& margin : Margin)
-		margin = mid(-9999, boost::lexical_cast<int>(tkn.next_tok()), 99999);
+		margin = std::clamp(parse_int(tkn.next_tok(), "margin"), -9999, 99999);
 	Effect = tkn.next_str_trim();
 
-	std::string text{tkn.next_tok().begin(), str.end()};
+	auto text_token = tkn.next_tok();
+	std::string text(str.substr(static_cast<size_t>(text_token.data() - str.data())));
 
+	// Parse a leading {=id=id...} extradata prefix. Malformed prefixes are
+	// left in place and treated as plain dialogue text.
 	if (text.size() > 1 && text[0] == '{' && text[1] == '=') {
-		static const boost::regex extradata_test("^\\{(=\\d+)+\\}");
-		boost::match_results<std::string::iterator> rematch;
-		if (boost::regex_search(text.begin(), text.end(), rematch, extradata_test)) {
-			std::string extradata_str = rematch.str(0);
-			text = rematch.suffix().str();
-
-			static const boost::regex idmatcher("=(\\d+)");
-			auto start = extradata_str.begin();
-			auto end = extradata_str.end();
-			std::vector<uint32_t> ids;
-			while (boost::regex_search(start, end, rematch, idmatcher)) {
-				auto id = boost::lexical_cast<uint32_t>(rematch.str(1));
-				ids.push_back(id);
-				start = rematch.suffix().first;
+		size_t pos = 1;
+		bool valid = true;
+		std::vector<uint32_t> ids;
+		while (pos < text.size() && text[pos] == '=') {
+			size_t digits_begin = ++pos;
+			while (pos < text.size() && text[pos] >= '0' && text[pos] <= '9')
+				++pos;
+			if (pos == digits_begin) {
+				valid = false;
+				break;
 			}
+			ids.push_back(parse_uint(std::string_view(text).substr(digits_begin, pos - digits_begin), "extradata id"));
+		}
+
+		if (valid && pos < text.size() && text[pos] == '}') {
+			text.erase(0, pos + 1);
 			ExtradataIds = ids;
 		}
 	}
@@ -141,7 +165,7 @@ void AssDialogue::Parse(std::string const& raw) {
 }
 
 static void append_int(std::string &str, int v) {
-	boost::spirit::karma::generate(back_inserter(str), boost::spirit::karma::int_, v);
+	str += std::to_string(v);
 	str += ',';
 }
 
@@ -177,7 +201,7 @@ std::string AssDialogue::GetEntryData() const {
 		str += '{';
 		for (auto id : ExtradataIds.get()) {
 			str += '=';
-			boost::spirit::karma::generate(back_inserter(str), boost::spirit::karma::int_, id);
+			str += std::to_string(id);
 		}
 		str += '}';
 	}

@@ -17,6 +17,7 @@
 
 #include "ass_file.h"
 #include "async_video_provider.h"
+#include "compat.h"
 #include "include/aegisub/context.h"
 #include "format.h"
 #include "help_button.h"
@@ -514,11 +515,11 @@ bool update_layout_res(AssFile *file, const AsyncVideoProvider *new_provider, wx
 
 void UpdateVideoProperties(AssFile *file, const AsyncVideoProvider *new_provider, wxWindow *parent) {
 	if (update_ycbcr_matrix(file, new_provider, parent))
-		file->Commit(_("change ycbcr matrix"), AssFile::COMMIT_SCRIPTINFO);
+		file->Commit(from_wx(_("change ycbcr matrix")), AssFile::COMMIT_SCRIPTINFO);
 
 	if (update_play_res(file, new_provider, parent))
-		file->Commit(_("change script resolution"), AssFile::COMMIT_SCRIPTINFO);
+		file->Commit(from_wx(_("change script resolution")), AssFile::COMMIT_SCRIPTINFO);
 
 	if (update_layout_res(file, new_provider, parent))
-		file->Commit(_("change layout resolution"), AssFile::COMMIT_SCRIPTINFO);
+		file->Commit(from_wx(_("change layout resolution")), AssFile::COMMIT_SCRIPTINFO);
 }

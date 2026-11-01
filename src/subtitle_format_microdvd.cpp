@@ -36,6 +36,7 @@
 
 #include "ass_dialogue.h"
 #include "ass_file.h"
+#include "ass_file_ui.h"
 #include "options.h"
 #include "text_file_reader.h"
 #include "text_file_writer.h"
@@ -80,7 +81,7 @@ bool MicroDVDSubtitleFormat::CanReadFile(agi::fs::path const& filename, const ch
 void MicroDVDSubtitleFormat::ReadFile(AssFile *target, agi::fs::path const& filename, agi::vfr::Framerate const& vfps, const char *encoding) const {
 	TextFileReader file(filename, encoding);
 
-	target->LoadDefault(false, OPT_GET("Subtitle Format/MicroDVD/Default Style Catalog")->GetString());
+	LoadDefaultFile(*target, false, OPT_GET("Subtitle Format/MicroDVD/Default Style Catalog")->GetString());
 
 	agi::vfr::Framerate fps;
 

@@ -1,0 +1,45 @@
+[Script Info]
+; Sample subtitle file for the DanketSub core test suite
+; Deliberately mixes override tags, comments, extradata and an attachment
+Title: Core Test Sample
+Original Script: DanketSub Tests
+ScriptType: v4.00+
+WrapStyle: 0
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+LayoutResX: 1920
+LayoutResY: 1080
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1
+Style: Sign,Open Sans,72,&H00FFD24A,&H000000FF,&H00201810,&H80000000,0,-1,0,0,105,100,1.5,0,1,3,1,8,40,40,60,1
+
+[Fonts]
+fontname: sample.ttf
+97*D
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:03.50,Default,Narrator,0,0,0,,{\fad(200,200)}It was a dark and stormy night...
+Dialogue: 1,0:00:03.50,0:00:05.00,Sign,Alice,10,20,30,,{\pos(960,200)}Beware the {\i1}clever{\i0} fox
+Comment: 0,0:00:05.00,0:00:06.00,Default,,0,0,0,,{\an8}This line is a comment
+Dialogue: 2,0:00:06.00,0:00:07.25,Default,Bob,0,0,0,fade,{\k25}Ka{\k30}ra{\k45}o{\k20}ke
+Dialogue: 0,0:00:07.25,0:00:09.00,Sign,,0,0,0,,{\p1}m 0 0 l 100 0 100 100 0 100{\p0}
+Dialogue: 0,0:00:09.00,0:00:10.50,Default,,0,0,0,,Line with \N newline{\blur2} and {\c&HFF0000&}color
+
+[Aegisub Project Garbage]
+Audio File: audio/sample.wav
+Video File: video/sample.mp4
+Video AR Mode: 2
+Video AR Value: 1.777778
+Video Zoom Percent: 1.5
+Scroll Position: 7
+Active Line: 3
+Video Position: 4
+
+[Aegisub Extradata]
+Data: 0,core.test,eHello#2C world#3A 100%#7Cdone
+Data: 7,core.bin,u97*D

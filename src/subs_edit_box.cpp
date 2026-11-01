@@ -450,7 +450,7 @@ void SubsEditBox::OnChange(wxStyledTextEvent &event) {
 
 void SubsEditBox::Commit(wxString const& desc, int type, bool amend, AssDialogue *line) {
 	file_changed_slot.Block();
-	commit_id = c->ass->Commit(desc, type, (amend && desc == last_commit_type) ? commit_id : -1, line);
+	commit_id = c->ass->Commit(from_wx(desc), type, (amend && desc == last_commit_type) ? commit_id : -1, line);
 	file_changed_slot.Unblock();
 	last_commit_type = desc;
 	last_time_commit_type = -1;
@@ -521,7 +521,7 @@ void SubsEditBox::CommitTimes(TimeField field) {
 
 	last_time_commit_type = field;
 	file_changed_slot.Block();
-	commit_id = c->ass->Commit(_("modify times"), AssFile::COMMIT_DIAG_TIME, commit_id, sel.size() == 1 ? *sel.begin() : nullptr);
+	commit_id = c->ass->Commit(from_wx(_("modify times")), AssFile::COMMIT_DIAG_TIME, commit_id, sel.size() == 1 ? *sel.begin() : nullptr);
 	file_changed_slot.Unblock();
 }
 

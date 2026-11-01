@@ -18,6 +18,7 @@
 
 #include "ass_dialogue.h"
 #include "ass_file.h"
+#include "ass_file_ui.h"
 #include "ass_style.h"
 #include "compat.h"
 #include "include/aegisub/context.h"
@@ -57,7 +58,7 @@ VisualToolBase::VisualToolBase(VideoDisplay *parent, agi::Context *context)
 void VisualToolBase::SetResolutions() {
 	int script_w, script_h, layout_w, layout_h;
 	c->ass->GetResolution(script_w, script_h);
-	c->ass->GetEffectiveLayoutResolution(c, layout_w, layout_h);
+	GetEffectiveLayoutResolution(c, layout_w, layout_h);
 	script_res = Vector2D(script_w, script_h);
 	layout_res = Vector2D(layout_w, layout_h);
 }
@@ -122,7 +123,7 @@ void VisualToolBase::Commit(wxString message) {
 	if (message.empty())
 		message = _("visual typesetting");
 
-	commit_id = c->ass->Commit(message, AssFile::COMMIT_DIAG_TEXT, commit_id);
+	commit_id = c->ass->Commit(from_wx(message), AssFile::COMMIT_DIAG_TEXT, commit_id);
 	file_changed_connection.Unblock();
 }
 

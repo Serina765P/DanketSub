@@ -19,6 +19,7 @@
 #include "ass_dialogue.h"
 #include "ass_file.h"
 #include "ass_style.h"
+#include "compat.h"
 #include "utils.h"
 
 #include <libaegisub/exception.h>
@@ -281,5 +282,5 @@ void ResampleResolution(AssFile *ass, ResampleSettings settings) {
 		ass->SetScriptInfo("LayoutResY", std::to_string(new_lry));
 	}
 
-	ass->Commit(_("resolution resampling"), AssFile::COMMIT_SCRIPTINFO | AssFile::COMMIT_DIAG_FULL);
+	ass->Commit(from_wx(_("resolution resampling")), AssFile::COMMIT_SCRIPTINFO | AssFile::COMMIT_DIAG_FULL);
 }

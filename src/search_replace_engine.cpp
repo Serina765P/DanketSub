@@ -18,6 +18,7 @@
 
 #include "ass_dialogue.h"
 #include "ass_file.h"
+#include "compat.h"
 #include "format.h"
 #include "include/aegisub/context.h"
 #include "selection_controller.h"
@@ -186,7 +187,7 @@ bool SearchReplaceEngine::FindReplace(bool replace) {
 			if (end == bad_pos || (pos == replace_ms.start && end == replace_ms.end)) {
 				Replace(line, replace_ms);
 				pos = replace_ms.end;
-				context->ass->Commit(_("replace"), AssFile::COMMIT_DIAG_TEXT);
+				context->ass->Commit(from_wx(_("replace")), AssFile::COMMIT_DIAG_TEXT);
 			}
 			else {
 				// The current line matches, but it wasn't already selected,
@@ -270,7 +271,7 @@ bool SearchReplaceEngine::ReplaceAll() {
 	}
 
 	if (count > 0) {
-		context->ass->Commit(_("replace"), AssFile::COMMIT_DIAG_TEXT);
+		context->ass->Commit(from_wx(_("replace")), AssFile::COMMIT_DIAG_TEXT);
 		wxMessageBox(fmt_plural(count, "One match was replaced.", "%d matches were replaced.", (int)count));
 	}
 	else {

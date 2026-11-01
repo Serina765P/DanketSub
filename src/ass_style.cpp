@@ -34,15 +34,15 @@
 
 #include "ass_style.h"
 
-#include "subtitle_format.h"
-#include "utils.h"
+#include "ass_core_error.h"
 
-#include <libaegisub/format.h>
 #include <libaegisub/split.h>
 
 #include <algorithm>
 #include <boost/lexical_cast.hpp>
-#include <wx/intl.h>
+#include <sstream>
+#include <string>
+#include <vector>
 
 AssStyle::AssStyle() {
 	std::fill(Margin.begin(), Margin.end(), 10);
@@ -159,9 +159,9 @@ AssStyle::AssStyle(std::string_view str, int version) {
 	if (version == 0)
 		alignment = SsaToAss(alignment);
 
-	Margin[0] = mid(-9999, p.next_int(), 99999);
-	Margin[1] = mid(-9999, p.next_int(), 99999);
-	Margin[2] = mid(-9999, p.next_int(), 99999);
+	Margin[0] = std::clamp(p.next_int(), -9999, 99999);
+	Margin[1] = std::clamp(p.next_int(), -9999, 99999);
+	Margin[2] = std::clamp(p.next_int(), -9999, 99999);
 
 	// Skip alpha level
 	if (version == 0)
@@ -175,44 +175,46 @@ AssStyle::AssStyle(std::string_view str, int version) {
 }
 
 void AssStyle::UpdateData() {
-	replace(name.begin(), name.end(), ',', ';');
-	replace(font.begin(), font.end(), ',', ';');
+	std::replace(name.begin(), name.end(), ',', ';');
+	std::replace(font.begin(), font.end(), ',', ';');
 
-	data = agi::format("Style: %s,%s,%g,%s,%s,%s,%s,%d,%d,%d,%d,%g,%g,%g,%g,%d,%g,%g,%i,%i,%i,%i,%i",
-		name, font, fontsize,
-		primary.GetAssStyleFormatted(),
-		secondary.GetAssStyleFormatted(),
-		outline.GetAssStyleFormatted(),
-		shadow.GetAssStyleFormatted(),
-		(bold? -1 : 0), (italic ? -1 : 0),
-		(underline ? -1 : 0), (strikeout ? -1 : 0),
-		scalex, scaley, spacing, angle,
-		borderstyle, outline_w, shadow_w, alignment,
-		Margin[0], Margin[1], Margin[2], encoding);
+	std::ostringstream out;
+	out << "Style: " << name << ',' << font << ',' << fontsize
+		<< ',' << primary.GetAssStyleFormatted()
+		<< ',' << secondary.GetAssStyleFormatted()
+		<< ',' << outline.GetAssStyleFormatted()
+		<< ',' << shadow.GetAssStyleFormatted()
+		<< ',' << (bold ? -1 : 0) << ',' << (italic ? -1 : 0)
+		<< ',' << (underline ? -1 : 0) << ',' << (strikeout ? -1 : 0)
+		<< ',' << scalex << ',' << scaley << ',' << spacing << ',' << angle
+		<< ',' << borderstyle << ',' << outline_w << ',' << shadow_w << ',' << alignment
+		<< ',' << Margin[0] << ',' << Margin[1] << ',' << Margin[2] << ',' << encoding;
+	data = out.str();
 }
 
-void AssStyle::GetEncodings(wxArrayString &encodingStrings) {
-	encodingStrings.Clear();
-	encodingStrings.Add(wxString("-1 - ") + _("Auto-detect base direction (libass only)"));
-	encodingStrings.Add(wxString("0 - ") + _("ANSI"));
-	encodingStrings.Add(wxString("1 - ") + _("Default"));
-	encodingStrings.Add(wxString("2 - ") + _("Symbol"));
-	encodingStrings.Add(wxString("77 - ") + _("Mac"));
-	encodingStrings.Add(wxString("128 - ") + _("Shift_JIS"));
-	encodingStrings.Add(wxString("129 - ") + _("Hangeul"));
-	encodingStrings.Add(wxString("130 - ") + _("Johab"));
-	encodingStrings.Add(wxString("134 - ") + _("GB2312"));
-	encodingStrings.Add(wxString("136 - ") + _("Chinese BIG5"));
-	encodingStrings.Add(wxString("161 - ") + _("Greek"));
-	encodingStrings.Add(wxString("162 - ") + _("Turkish"));
-	encodingStrings.Add(wxString("163 - ") + _("Vietnamese"));
-	encodingStrings.Add(wxString("177 - ") + _("Hebrew"));
-	encodingStrings.Add(wxString("178 - ") + _("Arabic"));
-	encodingStrings.Add(wxString("186 - ") + _("Baltic"));
-	encodingStrings.Add(wxString("204 - ") + _("Russian"));
-	encodingStrings.Add(wxString("222 - ") + _("Thai"));
-	encodingStrings.Add(wxString("238 - ") + _("East European"));
-	encodingStrings.Add(wxString("255 - ") + _("OEM"));
+std::vector<AssEncoding> AssStyle::GetEncodings() {
+	return {
+		{ -1,  "Auto-detect base direction (libass only)" },
+		{ 0,   "ANSI" },
+		{ 1,   "Default" },
+		{ 2,   "Symbol" },
+		{ 77,  "Mac" },
+		{ 128, "Shift_JIS" },
+		{ 129, "Hangeul" },
+		{ 130, "Johab" },
+		{ 134, "GB2312" },
+		{ 136, "Chinese BIG5" },
+		{ 161, "Greek" },
+		{ 162, "Turkish" },
+		{ 163, "Vietnamese" },
+		{ 177, "Hebrew" },
+		{ 178, "Arabic" },
+		{ 186, "Baltic" },
+		{ 204, "Russian" },
+		{ 222, "Thai" },
+		{ 238, "East European" },
+		{ 255, "OEM" },
+	};
 }
 
 int AssStyle::AssToSsa(int ass_align) {

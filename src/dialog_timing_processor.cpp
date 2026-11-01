@@ -445,7 +445,7 @@ void DialogTimingProcessor::Process() {
 		}
 	}
 
-	c->ass->Commit(_("timing processor"), AssFile::COMMIT_DIAG_TIME);
+	c->ass->Commit(from_wx(_("timing processor")), AssFile::COMMIT_DIAG_TIME);
 }
 }
 

@@ -167,7 +167,7 @@ void DialogAttachments::AttachFile(wxFileDialog &diag, wxString const& commit_ms
 	for (auto const& fn : paths)
 		c->ass->InsertAttachment(agi::fs::path(fn.wx_str()));
 
-	c->ass->Commit(commit_msg, AssFile::COMMIT_ATTACHMENT);
+	c->ass->Commit(from_wx(commit_msg), AssFile::COMMIT_ATTACHMENT);
 
 	UpdateList();
 }
@@ -245,7 +245,7 @@ void DialogAttachments::OnDelete(wxCommandEvent &) {
 	for (auto i = listView->GetFirstSelected(); i != -1; i = listView->GetNextSelected(i))
 		c->ass->Attachments.erase(c->ass->Attachments.begin() + i - removed++);
 
-	c->ass->Commit(_("remove attachment"), AssFile::COMMIT_ATTACHMENT);
+	c->ass->Commit(from_wx(_("remove attachment")), AssFile::COMMIT_ATTACHMENT);
 
 	UpdateList();
 	extractButton->Enable(false);

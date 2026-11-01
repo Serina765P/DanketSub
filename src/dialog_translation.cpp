@@ -273,7 +273,7 @@ void DialogTranslation::Commit(bool next) {
 	active_line->UpdateText(blocks);
 
 	file_change_connection.Block();
-	c->ass->Commit(_("translation assistant"), AssFile::COMMIT_DIAG_TEXT);
+	c->ass->Commit(from_wx(_("translation assistant")), AssFile::COMMIT_DIAG_TEXT);
 	file_change_connection.Unblock();
 
 	if (next) {

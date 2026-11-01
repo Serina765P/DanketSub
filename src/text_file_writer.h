@@ -39,5 +39,7 @@ public:
 	TextFileWriter(agi::fs::path const& filename, std::string encoding="");
 	~TextFileWriter() noexcept(false);	// ~Save() is noexcept(false)
 
+	/// Write text without adding a line break
+	void WriteRaw(std::string_view text);
 	void WriteLineToFile(std::string_view line, bool addLineBreak=true);
 };

@@ -19,6 +19,7 @@
 #include "ass_attachment.h"
 #include "ass_dialogue.h"
 #include "ass_file.h"
+#include "ass_file_ui.h"
 #include "ass_info.h"
 #include "ass_style.h"
 #include "compat.h"
@@ -38,6 +39,8 @@
 #include <libaegisub/path.h>
 #include <libaegisub/util.h>
 
+#include <string_view>
+
 #include <wx/msgdlg.h>
 
 namespace {
@@ -51,7 +54,7 @@ namespace {
 }
 
 struct SubsController::UndoInfo {
-	wxString undo_description;
+	std::string undo_description;
 	int commit_id;
 
 	std::vector<std::pair<std::string, std::string>> script_info;
@@ -64,7 +67,7 @@ struct SubsController::UndoInfo {
 	int active_line_id = 0;
 	int pos = 0, sel_start = 0, sel_end = 0;
 
-	UndoInfo(const agi::Context *c, wxString const& d, int commit_id)
+	UndoInfo(const agi::Context *c, std::string_view d, int commit_id)
 	: undo_description(d)
 	, commit_id(commit_id)
 	, attachments(c->ass->Attachments)
@@ -231,7 +234,7 @@ void SubsController::Close() {
 	filename.clear();
 	AssFile blank;
 	blank.swap(*context->ass);
-	context->ass->LoadDefault(true, OPT_GET("Subtitle Format/ASS/Default Style Catalog")->GetString());
+	LoadDefaultFile(*context->ass, true, OPT_GET("Subtitle Format/ASS/Default Style Catalog")->GetString());
 	context->ass->Commit("", AssFile::COMMIT_NEW);
 	FileOpen(filename);
 }
@@ -389,11 +392,11 @@ void SubsController::Redo() {
 }
 
 wxString SubsController::GetUndoDescription() const {
-	return IsUndoStackEmpty() ? wxString() : undo_stack.back().undo_description;
+	return IsUndoStackEmpty() ? wxString() : to_wx(undo_stack.back().undo_description);
 }
 
 wxString SubsController::GetRedoDescription() const {
-	return IsRedoStackEmpty() ? wxString() : redo_stack.back().undo_description;
+	return IsRedoStackEmpty() ? wxString() : to_wx(redo_stack.back().undo_description);
 }
 
 agi::fs::path SubsController::Filename() const {

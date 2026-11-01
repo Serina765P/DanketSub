@@ -232,7 +232,7 @@ void DialogProperties::OnOK(wxCommandEvent &) {
 	count += SetInfoIfDifferent("ScaledBorderAndShadow", ScaleBorder->GetValue() ? "yes" : "no");
 	count += SetInfoIfDifferent("YCbCr Matrix", from_wx(YCbCrMatrix->GetValue()));
 
-	if (count) c->ass->Commit(_("property changes"), AssFile::COMMIT_SCRIPTINFO);
+	if (count) c->ass->Commit(from_wx(_("property changes")), AssFile::COMMIT_SCRIPTINFO);
 
 	d.EndModal(!!count);
 }

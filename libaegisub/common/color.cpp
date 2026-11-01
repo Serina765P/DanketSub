@@ -16,7 +16,15 @@
 
 #include "parser.h"
 
-#include "libaegisub/format.h"
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+namespace {
+void append_hex(std::ostringstream &out, unsigned char value) {
+	out << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << int(value);
+}
+}
 
 namespace agi {
 
@@ -29,11 +37,23 @@ Color::Color(std::string_view str) {
 }
 
 std::string Color::GetAssStyleFormatted() const {
-	return agi::format("&H%02X%02X%02X%02X", a, b, g, r);
+	std::ostringstream out;
+	out << "&H";
+	append_hex(out, a);
+	append_hex(out, b);
+	append_hex(out, g);
+	append_hex(out, r);
+	return out.str();
 }
 
 std::string Color::GetAssOverrideFormatted() const {
-	return agi::format("&H%02X%02X%02X&", b, g, r);
+	std::ostringstream out;
+	out << "&H";
+	append_hex(out, b);
+	append_hex(out, g);
+	append_hex(out, r);
+	out << '&';
+	return out.str();
 }
 
 std::string Color::GetSsaFormatted() const {
@@ -41,16 +61,23 @@ std::string Color::GetSsaFormatted() const {
 }
 
 std::string Color::GetHexFormatted(bool rgba) const {
+	std::ostringstream out;
+	out << '#';
+	append_hex(out, r);
+	append_hex(out, g);
+	append_hex(out, b);
 	if (rgba)
-		return agi::format("#%02X%02X%02X%02X", r, g, b, a);
-	return agi::format("#%02X%02X%02X", r, g, b);
+		append_hex(out, a);
+	return out.str();
 }
 
 std::string Color::GetRgbFormatted() const {
+	std::ostringstream out;
 	if (a)
-		return agi::format("rgba(%d, %d, %d, %d)", r, g, b, a);
+		out << "rgba(" << int(r) << ", " << int(g) << ", " << int(b) << ", " << int(a) << ')';
 	else
-		return agi::format("rgb(%d, %d, %d)", r, g, b);
+		out << "rgb(" << int(r) << ", " << int(g) << ", " << int(b) << ')';
+	return out.str();
 }
 
 }
