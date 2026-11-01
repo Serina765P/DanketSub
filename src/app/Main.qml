@@ -48,6 +48,33 @@ RibbonWindow {
             RibbonTheme.themeMode = RibbonThemeType.System
     }
 
+    property string pendingFileAction: ""
+
+    function openSubtitles() {
+        if (BilingualSubtitleModel.modified) {
+            pendingFileAction = "open"
+            discardDialog.open()
+        } else {
+            subtitleOpenDialog.open()
+        }
+    }
+
+    function newSubtitles() {
+        if (BilingualSubtitleModel.modified) {
+            pendingFileAction = "new"
+            discardDialog.open()
+        } else {
+            BilingualSubtitleModel.newDocument()
+        }
+    }
+
+    function saveSubtitles() {
+        if (BilingualSubtitleModel.filePath.length > 0)
+            BilingualSubtitleModel.save()
+        else
+            subtitleSaveDialog.open()
+    }
+
     Connections {
         target: ThemeManager
         function onModeChanged() {
@@ -58,6 +85,16 @@ RibbonWindow {
     Shortcut {
         sequences: ["Ctrl+F1"]
         onActivated: ribbon.folded = !ribbon.folded
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+O"]
+        onActivated: window.openSubtitles()
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+S"]
+        onActivated: window.saveSubtitles()
     }
 
     RibbonTabBar {
@@ -102,7 +139,8 @@ RibbonWindow {
                     RibbonButton {
                         iconSource: RibbonIcons.Add
                         text: qsTr("New")
-                        enabled: false
+                        tipText: qsTr("Start an empty bilingual subtitle document")
+                        onClicked: window.newSubtitles()
                     }
                     RibbonButton {
                         iconSource: RibbonIcons.TextEdit
@@ -128,12 +166,14 @@ RibbonWindow {
                     RibbonButton {
                         iconSource: RibbonIcons.FolderOpen
                         text: qsTr("Open")
-                        enabled: false
+                        tipText: qsTr("Open an ASS or SSA subtitle file (Ctrl+O)")
+                        onClicked: window.openSubtitles()
                     }
                     RibbonButton {
                         iconSource: RibbonIcons.Save
                         text: qsTr("Save")
-                        enabled: false
+                        tipText: qsTr("Save the current subtitle file (Ctrl+S)")
+                        onClicked: window.saveSubtitles()
                     }
                 }
             }
@@ -151,9 +191,17 @@ RibbonWindow {
                     spacing: 4
 
                     RibbonButton {
+                        objectName: "ribbonAddPairButton"
+                        iconSource: RibbonIcons.Add
+                        text: qsTr("Add pair")
+                        tipText: qsTr("Append a new linked source and target row")
+                        onClicked: BilingualSubtitleModel.appendPair()
+                    }
+                    RibbonButton {
                         iconSource: RibbonIcons.TextBulletList
                         text: qsTr("Bind pair")
                         enabled: false
+                        tipText: qsTr("Select one source and one target line, then bind them into a pair")
                     }
                     RibbonButton {
                         iconSource: RibbonIcons.Link
@@ -188,5 +236,44 @@ RibbonWindow {
         options: FileDialog.DontUseNativeDialog
         nameFilters: [qsTr("Theme palette (*.json)"), qsTr("All files (*)")]
         onAccepted: ThemeManager.loadPalette(selectedFile)
+    }
+
+    MessageDialog {
+        id: discardDialog
+        objectName: "subtitleDiscardDialog"
+        title: qsTr("Unsaved changes")
+        text: qsTr("Discard unsaved changes?")
+        buttons: MessageDialog.Yes | MessageDialog.No
+        onAccepted: {
+            if (window.pendingFileAction === "new")
+                BilingualSubtitleModel.newDocument()
+            else if (window.pendingFileAction === "open")
+                subtitleOpenDialog.open()
+            window.pendingFileAction = ""
+        }
+        onRejected: window.pendingFileAction = ""
+    }
+
+    FileDialog {
+        id: subtitleOpenDialog
+        objectName: "subtitleOpenDialog"
+        title: qsTr("Open subtitles")
+        parentWindow: window
+        fileMode: FileDialog.OpenFile
+        options: FileDialog.DontUseNativeDialog
+        nameFilters: [qsTr("Subtitle files (*.ass *.ssa)"), qsTr("All files (*)")]
+        onAccepted: BilingualSubtitleModel.loadFile(selectedFile)
+    }
+
+    FileDialog {
+        id: subtitleSaveDialog
+        objectName: "subtitleSaveDialog"
+        title: qsTr("Save subtitles")
+        parentWindow: window
+        fileMode: FileDialog.SaveFile
+        defaultSuffix: "ass"
+        options: FileDialog.DontUseNativeDialog
+        nameFilters: [qsTr("Subtitle files (*.ass *.ssa)"), qsTr("All files (*)")]
+        onAccepted: BilingualSubtitleModel.saveFile(selectedFile)
     }
 }

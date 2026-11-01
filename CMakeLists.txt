@@ -18,6 +18,7 @@ add_library(danket_core STATIC
     src/ass_parser.cpp
     src/ass_style.cpp
     src/core/ass_io.cpp
+    src/core/bilingual_binder.cpp
     src/core/core_context.cpp
     src/core/undo_manager.cpp
 

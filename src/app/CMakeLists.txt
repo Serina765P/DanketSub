@@ -65,9 +65,12 @@ qt_add_qml_module(danket_ui
         Workspace.qml
         ThemeSettingsPage.qml
         FoldRibbonButton.qml
+        BilingualGridView.qml
     SOURCES
         theme_manager.cpp
         theme_manager.h
+        bilingual_subtitle_model.cpp
+        bilingual_subtitle_model.h
 )
 
 target_link_libraries(danket_ui PUBLIC
@@ -77,6 +80,7 @@ target_link_libraries(danket_ui PUBLIC
     Qt6::Quick
     Qt6::QuickControls2
     RibbonUI
+    danket_core
 )
 target_include_directories(danket_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -120,6 +124,17 @@ target_include_directories(danket_theme_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(danket_theme_tests PRIVATE Qt6::Core Qt6::Gui Qt6::Qml)
 add_test(NAME danket_theme_tests COMMAND danket_theme_tests)
 set_tests_properties(danket_theme_tests PROPERTIES
+    ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+)
+
+# Bilingual grid model: logical pair binding, edit routing and file I/O,
+# exercised without a QML scene.
+add_executable(danket_model_tests
+    ${CMAKE_SOURCE_DIR}/tests/app/bilingual_subtitle_model_tests.cpp
+)
+target_link_libraries(danket_model_tests PRIVATE danket_ui Qt6::Test)
+add_test(NAME danket_model_tests COMMAND danket_model_tests)
+set_tests_properties(danket_model_tests PROPERTIES
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
 )
 

@@ -188,138 +188,13 @@ Item {
 
             Panel {
                 heading: qsTr("Bilingual subtitle grid")
-                detail: qsTr("Preview data")
+                detail: BilingualSubtitleModel.fileName
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 180
 
-                ColumnLayout {
+                BilingualGridView {
+                    objectName: "bilingualGridRoot"
                     anchors.fill: parent
-                    spacing: 0
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.leftMargin: 8
-                        Layout.rightMargin: 8
-                        spacing: 8
-
-                        Text {
-                            Layout.preferredWidth: 88
-                            text: qsTr("Start")
-                            color: workspace.colors.textSecondary
-                            font.pixelSize: 11
-                            font.bold: true
-                        }
-                        Text {
-                            Layout.preferredWidth: 88
-                            text: qsTr("End")
-                            color: workspace.colors.textSecondary
-                            font.pixelSize: 11
-                            font.bold: true
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("Source")
-                            color: workspace.colors.textSecondary
-                            font.pixelSize: 11
-                            font.bold: true
-                        }
-                        Text {
-                            Layout.fillWidth: true
-                            text: qsTr("Target")
-                            color: workspace.colors.textSecondary
-                            font.pixelSize: 11
-                            font.bold: true
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        implicitHeight: 1
-                        color: workspace.colors.borderColor
-                    }
-
-                    ListView {
-                        id: grid
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
-                        model: ListModel {
-                            ListElement {
-                                start: "0:00:01.20"
-                                end: "0:00:03.80"
-                                source: "The sky turned to copper that evening."
-                                target: "那天傍晚，天空变成了铜色。"
-                            }
-                            ListElement {
-                                start: "0:00:04.10"
-                                end: "0:00:07.45"
-                                source: "We kept the radio on all night."
-                                target: "我们整夜都开着收音机。"
-                            }
-                            ListElement {
-                                start: "0:00:08.00"
-                                end: "0:00:11.30"
-                                source: "Nobody remembered who spoke first."
-                                target: "没人记得是谁先开口的。"
-                            }
-                            ListElement {
-                                start: "0:00:12.05"
-                                end: "0:00:15.60"
-                                source: "By morning the storm had passed."
-                                target: "到了早晨，暴风雨已经过去了。"
-                            }
-                            ListElement {
-                                start: "0:00:16.20"
-                                end: "0:00:19.90"
-                                source: "She wrote the last line in pencil."
-                                target: "她用铅笔写下了最后一行。"
-                            }
-                        }
-
-                        delegate: Rectangle {
-                            width: ListView.view.width
-                            height: 32
-                            color: index === 1
-                                   ? workspace.colors.selectionBg
-                                   : (index % 2 === 1 ? workspace.colors.gridZebraBg : "transparent")
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 8
-                                spacing: 8
-
-                                Text {
-                                    Layout.preferredWidth: 88
-                                    text: model.start
-                                    color: workspace.colors.textSecondary
-                                    font.pixelSize: 12
-                                    font.family: "Consolas"
-                                }
-                                Text {
-                                    Layout.preferredWidth: 88
-                                    text: model.end
-                                    color: workspace.colors.textSecondary
-                                    font.pixelSize: 12
-                                    font.family: "Consolas"
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: model.source
-                                    color: workspace.colors.textPrimary
-                                    font.pixelSize: 12
-                                    elide: Text.ElideRight
-                                }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: model.target
-                                    color: workspace.colors.textPrimary
-                                    font.pixelSize: 12
-                                    elide: Text.ElideRight
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -349,11 +224,19 @@ Item {
                     color: workspace.colors.textSecondary
                     font.pixelSize: 11
                 }
+                Text {
+                    visible: BilingualSubtitleModel.lastError.length > 0
+                    Layout.maximumWidth: 500
+                    text: BilingualSubtitleModel.lastError
+                    color: workspace.colors.danger
+                    font.pixelSize: 11
+                    elide: Text.ElideRight
+                }
                 Item {
                     Layout.fillWidth: true
                 }
                 Text {
-                    text: qsTr("%1 pairs").arg(grid.count)
+                    text: qsTr("%1 pairs").arg(BilingualSubtitleModel.pairCount)
                     color: workspace.colors.textSecondary
                     font.pixelSize: 11
                 }

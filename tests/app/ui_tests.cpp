@@ -27,6 +27,7 @@
 
 #include <cstdio>
 
+#include "bilingual_subtitle_model.h"
 #include "ribbonui.h"
 #include "test_support.h"
 #include "theme_manager.h"
@@ -104,6 +105,114 @@ int main(int argc, char *argv[]) {
 	if (statusBar)
 		CHECK_COLOR_AT("status bar uses surfaceAltBg",
 		            statusBar->property("color").value<QColor>(), QColor("#f7f8fa"));
+
+	// --- Bilingual grid -----------------------------------------------------
+	auto *gridRoot = find_item(window->contentItem(), QStringLiteral("bilingualGridRoot"));
+	auto *gridTable = find_item(window->contentItem(), QStringLiteral("bilingualTableView"));
+	CHECK("bilingual grid root exists", gridRoot != nullptr);
+	CHECK("bilingual table view exists", gridTable != nullptr);
+
+	auto *binder = engine.singletonInstance<danket::ui::BilingualSubtitleModel *>(
+	    "DanketSub", "BilingualSubtitleModel");
+	CHECK("BilingualSubtitleModel singleton found", binder != nullptr);
+
+	if (binder) {
+		auto const pairCount = [binder] {
+			return binder->property("pairCount").toInt();
+		};
+		auto const roleId = [binder](char const *name) {
+			auto const roles = binder->roleNames();
+			for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
+				if (it.value() == name)
+					return it.key();
+			}
+			return -1;
+		};
+
+		auto *addPairButton = find_item(window->contentItem(), QStringLiteral("bilingualAddPairButton"));
+		auto *deleteTargetButton = find_item(window->contentItem(), QStringLiteral("bilingualDeleteTargetButton"));
+		CHECK("grid add-pair button exists", addPairButton != nullptr);
+		CHECK("grid delete-target button exists", deleteTargetButton != nullptr);
+		CHECK("binder starts with at least one pair", pairCount() >= 1);
+
+		int const initialPairs = pairCount();
+		if (addPairButton) {
+			QMetaObject::invokeMethod(addPairButton, "clicked");
+			QTest::qWait(50);
+		}
+		CHECK("the add-pair button appends a pair", pairCount() == initialPairs + 1);
+
+		// Drive the real QML delegates, not just the C++ invokables, so the
+		// cell wiring for text and shared timing is part of the contract.
+		auto *sourceEditor = find_item(window->contentItem(), QStringLiteral("bilingualTextEditor_0_5"));
+		auto *targetEditor = find_item(window->contentItem(), QStringLiteral("bilingualTextEditor_0_6"));
+		auto *startEditor = find_item(window->contentItem(), QStringLiteral("bilingualTimeEditor_0_2"));
+		auto *endEditor = find_item(window->contentItem(), QStringLiteral("bilingualTimeEditor_0_3"));
+		CHECK("source cell editor exists", sourceEditor != nullptr);
+		CHECK("target cell editor exists", targetEditor != nullptr);
+		CHECK("start cell editor exists", startEditor != nullptr);
+		CHECK("end cell editor exists", endEditor != nullptr);
+
+		QString const sourceText = QStringLiteral("Bilingual test source");
+		QString const targetText = QStringLiteral("Bilingual test target");
+		if (sourceEditor) {
+			sourceEditor->setProperty("text", sourceText);
+			CHECK("source editor commits", QMetaObject::invokeMethod(sourceEditor, "editingFinished"));
+		}
+		if (targetEditor) {
+			targetEditor->setProperty("text", targetText);
+			CHECK("target editor commits", QMetaObject::invokeMethod(targetEditor, "editingFinished"));
+		}
+		if (startEditor) {
+			startEditor->setProperty("text", QStringLiteral("0:00:00.50"));
+			CHECK("start editor commits", QMetaObject::invokeMethod(startEditor, "editingFinished"));
+		}
+		if (endEditor) {
+			endEditor->setProperty("text", QStringLiteral("0:00:04.00"));
+			CHECK("end editor commits", QMetaObject::invokeMethod(endEditor, "editingFinished"));
+		}
+		binder->setProperty("currentRow", 0);
+		QTest::qWait(50);
+
+		int const sourceRole = roleId("sourceText");
+		int const targetRole = roleId("targetText");
+		int const linkedRole = roleId("isLinked");
+		int const startRole = roleId("startTimeMs");
+		int const endRole = roleId("endTimeMs");
+		CHECK("sourceText role is exposed", sourceRole >= 0);
+		CHECK("targetText role is exposed", targetRole >= 0);
+		CHECK("isLinked role is exposed", linkedRole >= 0);
+		CHECK("startTimeMs role is exposed", startRole >= 0);
+		CHECK("endTimeMs role is exposed", endRole >= 0);
+		if (sourceRole >= 0)
+			CHECK_STRING(binder->index(0, 5).data(sourceRole).toString(), sourceText);
+		if (targetRole >= 0)
+			CHECK_STRING(binder->index(0, 6).data(targetRole).toString(), targetText);
+		if (startRole >= 0)
+			CHECK_EQ_INT(binder->index(0, 2).data(startRole).toLongLong(), 500);
+		if (endRole >= 0)
+			CHECK_EQ_INT(binder->index(0, 3).data(endRole).toLongLong(), 4000);
+		QString const written = binder->exportAssText();
+		CHECK_EQ_INT(written.count(QStringLiteral("0:00:00.50")), 2);
+		CHECK_EQ_INT(written.count(QStringLiteral("0:00:04.00")), 2);
+
+		int const pairsBeforeDelete = pairCount();
+		if (deleteTargetButton) {
+			QMetaObject::invokeMethod(deleteTargetButton, "clicked");
+			QTest::qWait(50);
+		}
+		if (sourceRole >= 0)
+			CHECK_STRING(binder->index(0, 5).data(sourceRole).toString(), sourceText);
+		if (linkedRole >= 0)
+			CHECK("the row is unlinked after deleting the target",
+			      !binder->index(0, 1).data(linkedRole).toBool());
+		CHECK("deleting a side keeps the logical row", pairCount() == pairsBeforeDelete);
+
+		// Leave the document with a fresh linked pair for later interactions.
+		QMetaObject::invokeMethod(binder, "appendPair");
+		QTest::qWait(50);
+		CHECK("a fresh pair restores the sample document", pairCount() == pairsBeforeDelete + 1);
+	}
 
 	// --- Ribbon folding -----------------------------------------------------
 	// The tab-bar double-click gesture is RibbonUI's own fold path and is

@@ -36,5 +36,6 @@
 #include "ass/ass_style.h"
 
 #include "ass_io.h"
+#include "bilingual_binder.h"
 #include "core_context.h"
 #include "undo_manager.h"

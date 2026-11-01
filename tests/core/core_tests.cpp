@@ -26,6 +26,7 @@
 #include <danket/ass/ass_info.h>
 #include <danket/ass/ass_style.h>
 #include <danket/ass_io.h>
+#include <danket/bilingual_binder.h>
 #include <danket/core_context.h>
 #include <danket/undo_manager.h>
 
@@ -945,6 +946,726 @@ TEST(load_failure_preserves_state) {
 	CHECK(!context.Undo().CanUndo());
 	CHECK(!context.Undo().CanRedo());
 	CHECK_EQ(context.Undo().CurrentCommitId(), 1);
+}
+
+// ---------------------------------------------------------------------------
+// Fixtures and tests: bilingual source/target binding
+// ---------------------------------------------------------------------------
+
+std::string bilingual_fixture(std::string_view events) {
+	return
+		"[Script Info]\n"
+		"Title: Bilingual Test\n"
+		"ScriptType: v4.00+\n"
+		"PlayResX: 1920\n"
+		"PlayResY: 1080\n"
+		"\n"
+		"[V4+ Styles]\n"
+		"Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
+		"Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1\n"
+		"Style: Default_CN,Microsoft YaHei,44,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1\n"
+		"\n"
+		"[Events]\n"
+		"Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+		+ std::string(events);
+}
+
+std::string bilingual_event(std::string_view start, std::string_view end,
+	std::string_view style, std::string_view effect, std::string_view text, int layer = 0)
+{
+	std::string line = "Dialogue: " + std::to_string(layer) + ",";
+	line.append(start.data(), start.size()).push_back(',');
+	line.append(end.data(), end.size()).push_back(',');
+	line.append(style.data(), style.size()).append(",,0,0,0,");
+	line.append(effect.data(), effect.size()).push_back(',');
+	line.append(text.data(), text.size()).push_back('\n');
+	return line;
+}
+
+std::string bilingual_pair_events(std::string_view source_text = "Hello", std::string_view target_text = "你好") {
+	return
+		bilingual_event("0:00:01.00", "0:00:02.50", "Default", "sync-id:row-01;lang:src", source_text) +
+		bilingual_event("0:00:01.20", "0:00:02.80", "Default_CN", "sync-id:row-01;lang:dst", target_text);
+}
+
+std::string row_id_for(int index) {
+	std::string id = "row-";
+	if (index < 10)
+		id += '0';
+	id += std::to_string(index);
+	return id;
+}
+
+std::size_t count_in(std::string_view haystack, std::string_view needle) {
+	std::size_t count = 0;
+	for (std::size_t pos = 0; (pos = haystack.find(needle, pos)) != std::string_view::npos; pos += needle.size())
+		++count;
+	return count;
+}
+
+TEST(bilingual_sync_tag_parse_format) {
+	using danket::BilingualSide;
+	using danket::BilingualBinder;
+
+	auto const source = BilingualBinder::ParseSyncTag("sync-id:row-01;lang:src");
+	REQUIRE(source.has_value());
+	CHECK_EQ(source->id, "row-01");
+	CHECK(source->side == BilingualSide::Source);
+
+	auto const target = BilingualBinder::ParseSyncTag("  lang:dst;sync-id:row-07  ");
+	REQUIRE(target.has_value());
+	CHECK_EQ(target->id, "row-07");
+	CHECK(target->side == BilingualSide::Target);
+
+	auto const extras = BilingualBinder::ParseSyncTag("note:ignored;sync-id:row-02;lang:src;trailing;");
+	REQUIRE(extras.has_value());
+	CHECK_EQ(extras->id, "row-02");
+	CHECK(extras->side == BilingualSide::Source);
+
+	auto const spaced = BilingualBinder::ParseSyncTag("\t sync-id:row-03 ; lang:dst \t");
+	REQUIRE(spaced.has_value());
+	CHECK_EQ(spaced->id, "row-03");
+	CHECK(spaced->side == BilingualSide::Target);
+
+	char const *invalid[] = {
+		"",
+		"   ",
+		"lang:src",
+		"sync-id:row-01",
+		"sync-id:;lang:src",
+		"sync-id:row 01;lang:src",
+		"sync-id:row-01\tx;lang:src",
+		"sync-id:row\n01;lang:src",
+		"sync-id:row,01;lang:src",
+		"sync-id:row-01;lang:eng",
+		"sync-id:row-01;lang:SRC",
+		"sync-id:row-01;lang:dst;lang:src",
+		"sync-id:row-01;sync-id:row-02;lang:src",
+	};
+	for (auto const *effect : invalid)
+		CHECK(!BilingualBinder::ParseSyncTag(effect).has_value());
+
+	CHECK_EQ(BilingualBinder::FormatSyncTag("row-01", BilingualSide::Source), "sync-id:row-01;lang:src");
+	CHECK_EQ(BilingualBinder::FormatSyncTag("row-100", BilingualSide::Target), "sync-id:row-100;lang:dst");
+
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(""));
+	CHECK_EQ(BilingualBinder::GenerateSyncId(context.Subs()), "row-01");
+
+	auto *second = new AssDialogue;
+	second->Effect = BilingualBinder::FormatSyncTag("row-02", BilingualSide::Target);
+	context.Subs().Events.push_back(*second);
+	CHECK_EQ(BilingualBinder::GenerateSyncId(context.Subs()), "row-01");
+
+	auto *first = new AssDialogue;
+	first->Effect = BilingualBinder::FormatSyncTag("row-01", BilingualSide::Source);
+	context.Subs().Events.push_back(*first);
+	CHECK_EQ(BilingualBinder::GenerateSyncId(context.Subs()), "row-03");
+
+	auto *malformed = new AssDialogue;
+	malformed->Effect = "sync-id:row-03;lang:eng";
+	context.Subs().Events.push_back(*malformed);
+	CHECK_EQ(BilingualBinder::GenerateSyncId(context.Subs()), "row-03");
+
+	for (int index = 3; index <= 99; ++index) {
+		auto *line = new AssDialogue;
+		line->Effect = BilingualBinder::FormatSyncTag(row_id_for(index), BilingualSide::Source);
+		context.Subs().Events.push_back(*line);
+	}
+	CHECK_EQ(BilingualBinder::GenerateSyncId(context.Subs()), "row-100");
+}
+
+TEST(bilingual_refresh_pairs_lines) {
+	std::string const events =
+		bilingual_event("0:00:01.00", "0:00:02.50", "Default", "sync-id:row-01;lang:src", "Hello") +
+		bilingual_event("0:00:03.00", "0:00:04.00", "Default", "", "Plain line") +
+		bilingual_event("0:00:01.20", "0:00:02.80", "Default_CN", "sync-id:row-01;lang:dst", "你好") +
+		bilingual_event("0:00:04.50", "0:00:05.00", "Default", "", "Second plain") +
+		bilingual_event("0:00:06.00", "0:00:07.00", "Default", "sync-id:row-02;lang:src", "Orphan") +
+		bilingual_event("0:00:08.00", "0:00:09.00", "Default", "sync-id:row-01;lang:src", "Duplicate source") +
+		bilingual_event("0:00:09.00", "0:00:10.00", "Default_CN", "sync-id:row-01;lang:dst", "Duplicate target");
+
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(events));
+	danket::BilingualBinder binder(context.Subs());
+	CHECK_EQ(binder.File().Events.size(), std::size_t(7));
+	CHECK_EQ(binder.Rows().size(), std::size_t(6));
+
+	auto const &pair = binder.Rows()[0];
+	CHECK_EQ(pair.sync_id, "row-01");
+	CHECK(pair.linked);
+	REQUIRE(pair.Has(danket::BilingualSide::Source));
+	REQUIRE(pair.Has(danket::BilingualSide::Target));
+	CHECK_EQ(pair.source->GetText(), "Hello");
+	CHECK_EQ(pair.target->GetText(), "你好");
+	CHECK_EQ(pair.source->Style.get(), "Default");
+	CHECK_EQ(pair.target->Style.get(), "Default_CN");
+	CHECK_EQ(pair.source->Effect.get(), "sync-id:row-01;lang:src");
+	CHECK_EQ(pair.target->Effect.get(), "sync-id:row-01;lang:dst");
+	CHECK_EQ(int(pair.Start()), 1000);
+	CHECK_EQ(int(pair.End()), 2500);
+	// The target is normalized to the canonical source timing
+	CHECK_EQ(int(pair.target->Start), 1000);
+	CHECK_EQ(int(pair.target->End), 2500);
+
+	auto const &plain = binder.Rows()[1];
+	CHECK(plain.sync_id.empty());
+	CHECK(!plain.linked);
+	REQUIRE(plain.source != nullptr);
+	CHECK(plain.target == nullptr);
+	CHECK_EQ(plain.source->GetText(), "Plain line");
+	CHECK_EQ(int(plain.Start()), 3000);
+	CHECK_EQ(int(plain.End()), 4000);
+
+	auto const &second_plain = binder.Rows()[2];
+	CHECK(second_plain.sync_id.empty());
+	CHECK(second_plain.source != nullptr);
+	CHECK_EQ(second_plain.source->GetText(), "Second plain");
+	CHECK_EQ(int(second_plain.Start()), 4500);
+
+	auto const &orphan = binder.Rows()[3];
+	CHECK_EQ(orphan.sync_id, "row-02");
+	CHECK(!orphan.linked);
+	REQUIRE(orphan.source != nullptr);
+	CHECK(orphan.target == nullptr);
+	CHECK_EQ(orphan.source->GetText(), "Orphan");
+
+	auto const &duplicate = binder.Rows()[4];
+	CHECK(duplicate.sync_id.empty());
+	CHECK(!duplicate.linked);
+	REQUIRE(duplicate.source != nullptr);
+	CHECK(duplicate.target == nullptr);
+	CHECK_EQ(duplicate.source->GetText(), "Duplicate source");
+	CHECK_EQ(duplicate.source->Effect.get(), "sync-id:row-01;lang:src");
+
+	auto const &duplicate_target = binder.Rows()[5];
+	CHECK(duplicate_target.sync_id.empty());
+	CHECK(!duplicate_target.linked);
+	CHECK(duplicate_target.source == nullptr);
+	REQUIRE(duplicate_target.target != nullptr);
+	CHECK_EQ(duplicate_target.target->GetText(), "Duplicate target");
+	CHECK_EQ(duplicate_target.target->Effect.get(), "sync-id:row-01;lang:dst");
+
+	// Refresh neither commits nor reorders the physical lines; the target
+	// timing normalization above only updates the in-memory model
+	CHECK_EQ(context.Undo().CurrentCommitId(), 1);
+	CHECK(!context.Undo().CanUndo());
+	binder.Refresh();
+	CHECK_EQ(binder.Rows().size(), std::size_t(6));
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "Hello");
+	CHECK(binder.Rows()[0].linked);
+	CHECK_EQ(context.Undo().CurrentCommitId(), 1);
+}
+
+TEST(bilingual_set_time_persists_across_save_and_reload) {
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(bilingual_pair_events()));
+	danket::BilingualBinder binder(context.Subs());
+	REQUIRE(binder.Rows().size() == 1);
+	CHECK(binder.Rows()[0].linked);
+	CHECK_EQ(context.Undo().CurrentCommitId(), 1);
+
+	CHECK(binder.SetTime(0, agi::Time(3000), agi::Time(4000)));
+	CHECK_EQ(int(binder.Rows()[0].Start()), 3000);
+	CHECK_EQ(int(binder.Rows()[0].End()), 4000);
+	CHECK_EQ(int(binder.Rows()[0].source->Start), 3000);
+	CHECK_EQ(int(binder.Rows()[0].source->End), 4000);
+	CHECK_EQ(int(binder.Rows()[0].target->Start), 3000);
+	CHECK_EQ(int(binder.Rows()[0].target->End), 4000);
+	CHECK_EQ(context.Undo().UndoDescription(), "edit bilingual timing");
+	CHECK_EQ(context.Undo().CurrentCommitId(), 2);
+
+	CHECK(!binder.SetTime(0, agi::Time(3000), agi::Time(4000)));
+	CHECK(!binder.SetTime(0, agi::Time(5000), agi::Time(4000)));
+	CHECK(!binder.SetTime(-1, agi::Time(1000), agi::Time(2000)));
+	CHECK(!binder.SetTime(1, agi::Time(1000), agi::Time(2000)));
+	CHECK_EQ(int(binder.Rows()[0].Start()), 3000);
+	CHECK_EQ(context.Undo().CurrentCommitId(), 2);
+
+	std::string const saved = context.SaveToText(options_lf());
+	CHECK_EQ(count_in(saved, "Dialogue: "), std::size_t(2));
+	CHECK_CONTAINS(saved, "Dialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,sync-id:row-01;lang:src,Hello\n");
+	CHECK_CONTAINS(saved, "Dialogue: 0,0:00:03.00,0:00:04.00,Default_CN,,0,0,0,sync-id:row-01;lang:dst,你好\n");
+
+	danket::CoreContext reloaded;
+	reloaded.LoadFromText(saved);
+	danket::BilingualBinder reloaded_binder(reloaded.Subs());
+	reloaded_binder.Refresh();
+	REQUIRE(reloaded_binder.Rows().size() == 1);
+	auto const &pair = reloaded_binder.Rows()[0];
+	CHECK_EQ(pair.sync_id, "row-01");
+	CHECK(pair.linked);
+	CHECK_EQ(pair.source->GetText(), "Hello");
+	CHECK_EQ(pair.target->GetText(), "你好");
+	CHECK_EQ(pair.source->Style.get(), "Default");
+	CHECK_EQ(pair.target->Style.get(), "Default_CN");
+	CHECK_EQ(int(pair.Start()), 3000);
+	CHECK_EQ(int(pair.End()), 4000);
+	CHECK_EQ(int(pair.target->Start), 3000);
+	CHECK_EQ(int(pair.target->End), 4000);
+	CHECK_EQ(reloaded.Undo().CurrentCommitId(), 1);
+}
+
+TEST(bilingual_delete_side_preserves_counterpart) {
+	using danket::BilingualSide;
+
+	{
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(bilingual_pair_events()));
+		danket::BilingualBinder binder(context.Subs());
+
+		CHECK(binder.DeleteSide(0, BilingualSide::Target));
+		CHECK_EQ(binder.File().Events.size(), std::size_t(1));
+		CHECK_EQ(binder.Rows().size(), std::size_t(1));
+		auto const &row = binder.Rows()[0];
+		CHECK(row.sync_id.empty());
+		CHECK(!row.linked);
+		REQUIRE(row.source != nullptr);
+		CHECK(row.target == nullptr);
+		CHECK_EQ(row.source->GetText(), "Hello");
+		CHECK(row.source->Effect.get().empty());
+		CHECK_EQ(int(row.Start()), 1000);
+		CHECK_EQ(int(row.End()), 2500);
+		CHECK_EQ(context.Undo().UndoDescription(), "delete bilingual line");
+
+		std::string const saved = context.SaveToText(options_lf());
+		CHECK_EQ(count_in(saved, "Dialogue: "), std::size_t(1));
+		CHECK_NOT_CONTAINS(saved, "sync-id:");
+		CHECK_NOT_CONTAINS(saved, "你好");
+
+		CHECK(!binder.DeleteSide(0, BilingualSide::Target));
+		CHECK(!binder.DeleteSide(5, BilingualSide::Source));
+		CHECK(binder.DeleteSide(0, BilingualSide::Source));
+		CHECK(binder.Rows().empty());
+		CHECK(binder.File().Events.empty());
+	}
+
+	{
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(bilingual_pair_events()));
+		danket::BilingualBinder binder(context.Subs());
+
+		CHECK(binder.DeleteSide(0, BilingualSide::Source));
+		CHECK_EQ(binder.File().Events.size(), std::size_t(1));
+		CHECK_EQ(binder.Rows().size(), std::size_t(1));
+		auto const &row = binder.Rows()[0];
+		CHECK(row.sync_id.empty());
+		CHECK(!row.linked);
+		REQUIRE(row.source != nullptr);
+		CHECK(row.target == nullptr);
+		CHECK_EQ(row.source->GetText(), "你好");
+		CHECK(row.source->Effect.get().empty());
+		CHECK_EQ(int(row.Start()), 1000);
+		CHECK_EQ(int(row.End()), 2500);
+
+		std::string const saved = context.SaveToText(options_lf());
+		CHECK_EQ(count_in(saved, "Dialogue: "), std::size_t(1));
+		CHECK_CONTAINS(saved, "Dialogue: 0,0:00:01.00,0:00:02.50,Default_CN,,0,0,0,,你好\n");
+	}
+}
+
+TEST(bilingual_clear_text_protects_counterpart) {
+	using danket::BilingualSide;
+
+	{
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(bilingual_pair_events()));
+		danket::BilingualBinder binder(context.Subs());
+		REQUIRE(binder.Rows().size() == 1);
+		CHECK(binder.Rows()[0].linked);
+
+		CHECK(binder.SetText(0, BilingualSide::Target, ""));
+		CHECK_EQ(binder.File().Events.size(), std::size_t(1));
+		CHECK_EQ(binder.Rows().size(), std::size_t(1));
+		auto const &row = binder.Rows()[0];
+		CHECK(!row.linked);
+		CHECK(row.target == nullptr);
+		REQUIRE(row.source != nullptr);
+		CHECK_EQ(row.source->GetText(), "Hello");
+		CHECK(row.source->Effect.get().empty());
+		CHECK_EQ(int(row.source->Start), 1000);
+		CHECK_EQ(int(row.source->End), 2500);
+		CHECK_EQ(context.Undo().UndoDescription(), "delete bilingual line");
+
+		// The missing side now has nothing to clear
+		CHECK(!binder.SetText(0, BilingualSide::Target, ""));
+		CHECK(binder.SetText(0, BilingualSide::Source, ""));
+		CHECK(binder.Rows()[0].source->GetText().empty());
+		CHECK(binder.Rows()[0].source->Effect.get().empty());
+	}
+
+	{
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(bilingual_pair_events()));
+		danket::BilingualBinder binder(context.Subs());
+
+		CHECK(binder.SetText(0, BilingualSide::Source, ""));
+		CHECK_EQ(binder.File().Events.size(), std::size_t(1));
+		CHECK_EQ(binder.Rows().size(), std::size_t(1));
+		auto const &row = binder.Rows()[0];
+		CHECK(row.sync_id.empty());
+		CHECK(!row.linked);
+		REQUIRE(row.source != nullptr);
+		CHECK(row.target == nullptr);
+		CHECK_EQ(row.source->GetText(), "你好");
+		CHECK(row.source->Effect.get().empty());
+		CHECK_EQ(int(row.Start()), 1000);
+		CHECK_EQ(int(row.End()), 2500);
+
+		std::string const saved = context.SaveToText(options_lf());
+		CHECK_EQ(count_in(saved, "Dialogue: "), std::size_t(1));
+		CHECK_CONTAINS(saved, "Dialogue: 0,0:00:01.00,0:00:02.50,Default_CN,,0,0,0,,你好\n");
+	}
+}
+
+TEST(bilingual_set_text_fills_missing_side) {
+	using danket::BilingualSide;
+
+	{
+		std::string const events = bilingual_event(
+			"0:00:02.00", "0:00:03.00", "Default", "sync-id:row-05;lang:src", "Only source");
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(events));
+		danket::BilingualBinder binder(context.Subs());
+		REQUIRE(binder.Rows().size() == 1);
+		CHECK_EQ(binder.Rows()[0].sync_id, "row-05");
+		CHECK(!binder.Rows()[0].linked);
+		CHECK(!binder.SetText(0, BilingualSide::Target, ""));
+		CHECK(!binder.SetText(-1, BilingualSide::Source, "ignored"));
+
+		CHECK(binder.SetText(0, BilingualSide::Target, "译文"));
+		CHECK_EQ(binder.File().Events.size(), std::size_t(2));
+		REQUIRE(binder.Rows().size() == 1);
+		auto const &row = binder.Rows()[0];
+		CHECK(row.linked);
+		CHECK_EQ(row.sync_id, "row-05");
+		REQUIRE(row.source != nullptr);
+		REQUIRE(row.target != nullptr);
+		CHECK_EQ(row.source->GetText(), "Only source");
+		CHECK_EQ(row.target->GetText(), "译文");
+		CHECK_EQ(row.source->Effect.get(), "sync-id:row-05;lang:src");
+		CHECK_EQ(row.target->Effect.get(), "sync-id:row-05;lang:dst");
+		CHECK_EQ(int(row.source->Start), 2000);
+		CHECK_EQ(int(row.target->Start), 2000);
+		CHECK_EQ(int(row.source->End), 3000);
+		CHECK_EQ(int(row.target->End), 3000);
+		CHECK_EQ(row.target->Style.get(), "Default");
+		CHECK_EQ(context.Undo().UndoDescription(), "bind bilingual pair");
+
+		auto line = binder.File().Events.begin();
+		REQUIRE(line != binder.File().Events.end());
+		CHECK_EQ(line->GetText(), "Only source");
+		++line;
+		REQUIRE(line != binder.File().Events.end());
+		CHECK_EQ(line->GetText(), "译文");
+	}
+
+	{
+		std::string const events = bilingual_event(
+			"0:00:04.00", "0:00:05.00", "Default_CN", "", "Untagged source");
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(events));
+		danket::BilingualBinder binder(context.Subs());
+		REQUIRE(binder.Rows().size() == 1);
+		CHECK(binder.Rows()[0].sync_id.empty());
+
+		CHECK(binder.SetText(0, BilingualSide::Target, "新增"));
+		REQUIRE(binder.Rows().size() == 1);
+		auto const &row = binder.Rows()[0];
+		CHECK(row.linked);
+		CHECK_EQ(row.sync_id, "row-01");
+		CHECK_EQ(row.source->GetText(), "Untagged source");
+		CHECK_EQ(row.target->GetText(), "新增");
+		CHECK_EQ(row.source->Effect.get(), "sync-id:row-01;lang:src");
+		CHECK_EQ(row.target->Effect.get(), "sync-id:row-01;lang:dst");
+		CHECK_EQ(row.target->Style.get(), "Default_CN");
+		CHECK_EQ(int(row.target->Start), 4000);
+		CHECK_EQ(int(row.target->End), 5000);
+	}
+
+	{
+		std::string const events = bilingual_event(
+			"0:00:06.00", "0:00:07.00", "Default_CN", "sync-id:row-07;lang:dst", "只有译文");
+		danket::CoreContext context;
+		context.LoadFromText(bilingual_fixture(events));
+		danket::BilingualBinder binder(context.Subs());
+		REQUIRE(binder.Rows().size() == 1);
+		auto const &initial = binder.Rows()[0];
+		CHECK(initial.source == nullptr);
+		REQUIRE(initial.target != nullptr);
+
+		CHECK(binder.SetText(0, BilingualSide::Source, "Only translation"));
+		REQUIRE(binder.Rows().size() == 1);
+		auto const &row = binder.Rows()[0];
+		CHECK(row.linked);
+		CHECK_EQ(row.sync_id, "row-07");
+		CHECK_EQ(row.source->GetText(), "Only translation");
+		CHECK_EQ(row.target->GetText(), "只有译文");
+		CHECK_EQ(row.source->Effect.get(), "sync-id:row-07;lang:src");
+		CHECK_EQ(row.target->Effect.get(), "sync-id:row-07;lang:dst");
+		CHECK_EQ(row.source->Style.get(), "Default_CN");
+		CHECK_EQ(int(row.source->Start), 6000);
+		CHECK_EQ(int(row.source->End), 7000);
+
+		// Source is physically inserted before the existing target
+		auto line = binder.File().Events.begin();
+		REQUIRE(line != binder.File().Events.end());
+		CHECK_EQ(line->GetText(), "Only translation");
+		++line;
+		REQUIRE(line != binder.File().Events.end());
+		CHECK_EQ(line->GetText(), "只有译文");
+	}
+}
+
+TEST(bilingual_add_pair_delete_row_and_unbind) {
+	using danket::BilingualSide;
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(""));
+	danket::BilingualBinder binder(context.Subs());
+	CHECK(binder.Rows().empty());
+
+	int const first = binder.AddPair(agi::Time(1000), agi::Time(2000), "Hello", "你好", "Default", "Default_CN");
+	CHECK_EQ(first, 0);
+	CHECK_EQ(binder.File().Events.size(), std::size_t(2));
+	REQUIRE(binder.Rows().size() == 1);
+	{
+		auto const &row = binder.Rows()[0];
+		CHECK_EQ(row.sync_id, "row-01");
+		CHECK(row.linked);
+		CHECK_EQ(row.source->GetText(), "Hello");
+		CHECK_EQ(row.target->GetText(), "你好");
+		CHECK_EQ(row.source->Style.get(), "Default");
+		CHECK_EQ(row.target->Style.get(), "Default_CN");
+		CHECK_EQ(row.source->Effect.get(), "sync-id:row-01;lang:src");
+		CHECK_EQ(row.target->Effect.get(), "sync-id:row-01;lang:dst");
+		CHECK_EQ(int(row.Start()), 1000);
+		CHECK_EQ(int(row.End()), 2000);
+		CHECK_EQ(context.Undo().UndoDescription(), "bind bilingual pair");
+	}
+	auto first_line = binder.File().Events.begin();
+	REQUIRE(first_line != binder.File().Events.end());
+	CHECK_EQ(first_line->GetText(), "Hello");
+	++first_line;
+	REQUIRE(first_line != binder.File().Events.end());
+	CHECK_EQ(first_line->GetText(), "你好");
+
+	int const second = binder.AddPair(agi::Time(3000), agi::Time(4000), "Two", "第二");
+	CHECK_EQ(second, 1);
+	REQUIRE(binder.Rows().size() == 2);
+	CHECK_EQ(binder.Rows()[1].sync_id, "row-02");
+	CHECK_EQ(binder.Rows()[1].source->Style.get(), "Default");
+	CHECK_EQ(binder.Rows()[1].target->Style.get(), "Default");
+
+	int const third = binder.AddPair(agi::Time(5000), agi::Time(6000));
+	CHECK_EQ(third, 2);
+	REQUIRE(binder.Rows().size() == 3);
+	CHECK_EQ(binder.Rows()[2].sync_id, "row-03");
+	CHECK(binder.Rows()[2].linked);
+	CHECK(binder.Rows()[2].source->GetText().empty());
+	CHECK(binder.Rows()[2].target->GetText().empty());
+
+	CHECK_EQ(binder.AddPair(agi::Time(5000), agi::Time(4000)), -1);
+	CHECK_EQ(binder.File().Events.size(), std::size_t(6));
+
+	CHECK(binder.DeleteRow(1));
+	CHECK_EQ(binder.File().Events.size(), std::size_t(4));
+	REQUIRE(binder.Rows().size() == 2);
+	CHECK_EQ(binder.Rows()[0].sync_id, "row-01");
+	CHECK_EQ(binder.Rows()[0].target->GetText(), "你好");
+	CHECK_EQ(binder.Rows()[1].sync_id, "row-03");
+	CHECK(binder.Rows()[1].linked);
+	CHECK_EQ(context.Undo().UndoDescription(), "delete bilingual pair");
+
+	CHECK(binder.Unbind(0));
+	CHECK_EQ(binder.File().Events.size(), std::size_t(4));
+	REQUIRE(binder.Rows().size() == 3);
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "Hello");
+	CHECK_EQ(binder.Rows()[1].source->GetText(), "你好");
+	for (int index = 0; index < 2; ++index) {
+		CHECK(binder.Rows()[index].sync_id.empty());
+		CHECK(!binder.Rows()[index].linked);
+		REQUIRE(binder.Rows()[index].source != nullptr);
+		CHECK(binder.Rows()[index].target == nullptr);
+		CHECK(binder.Rows()[index].source->Effect.get().empty());
+	}
+	CHECK(binder.Rows()[2].linked);
+	CHECK_EQ(binder.Rows()[2].sync_id, "row-03");
+	CHECK_EQ(binder.Rows()[2].source->Effect.get(), "sync-id:row-03;lang:src");
+	CHECK_EQ(binder.Rows()[2].target->Effect.get(), "sync-id:row-03;lang:dst");
+	CHECK_EQ(context.Undo().UndoDescription(), "unbind bilingual pair");
+
+	CHECK(!binder.DeleteRow(99));
+	CHECK(!binder.Unbind(99));
+	CHECK(!binder.DeleteSide(99, BilingualSide::Target));
+
+	CHECK(binder.DeleteRow(0));
+	CHECK_EQ(binder.File().Events.size(), std::size_t(3));
+	REQUIRE(binder.Rows().size() == 2);
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "你好");
+	CHECK(binder.Rows()[1].linked);
+	CHECK_EQ(binder.Rows()[1].sync_id, "row-03");
+
+	std::string const saved = context.SaveToText(options_lf());
+	CHECK_EQ(count_in(saved, "Dialogue: "), std::size_t(3));
+	CHECK_EQ(count_in(saved, "sync-id:row-03"), std::size_t(2));
+	CHECK_NOT_CONTAINS(saved, "sync-id:row-01");
+}
+
+TEST(bilingual_export_roundtrip_standard_ass) {
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(
+		bilingual_pair_events() +
+		bilingual_event("0:00:03.00", "0:00:04.00", "Default", "", "Plain")));
+	danket::BilingualBinder binder(context.Subs());
+	REQUIRE(binder.Rows().size() == 2);
+	CHECK(binder.SetTime(0, agi::Time(1500), agi::Time(3000)));
+
+	std::string const saved = context.SaveToText(options_lf());
+	CHECK_EQ(count_in(saved, "Dialogue: "), std::size_t(3));
+	CHECK_EQ(count_in(saved, "[Events]"), std::size_t(1));
+	CHECK_EQ(count_in(saved, "sync-id:row-01"), std::size_t(2));
+	CHECK_NOT_CONTAINS(saved, "[Bilingual");
+	CHECK_CONTAINS(saved, "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n");
+	CHECK_CONTAINS(saved, "Dialogue: 0,0:00:01.50,0:00:03.00,Default,,0,0,0,sync-id:row-01;lang:src,Hello\n");
+	CHECK_CONTAINS(saved, "Dialogue: 0,0:00:01.50,0:00:03.00,Default_CN,,0,0,0,sync-id:row-01;lang:dst,你好\n");
+	CHECK_CONTAINS(saved, "Dialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,Plain\n");
+
+	danket::CoreContext reloaded;
+	reloaded.LoadFromText(saved);
+	danket::BilingualBinder reloaded_binder(reloaded.Subs());
+	CHECK_EQ(reloaded_binder.File().Events.size(), std::size_t(3));
+	REQUIRE(reloaded_binder.Rows().size() == 2);
+	auto const &pair = reloaded_binder.Rows()[0];
+	CHECK_EQ(pair.sync_id, "row-01");
+	CHECK(pair.linked);
+	CHECK_EQ(pair.source->Effect.get(), "sync-id:row-01;lang:src");
+	CHECK_EQ(pair.target->Effect.get(), "sync-id:row-01;lang:dst");
+	CHECK_EQ(pair.source->GetText(), "Hello");
+	CHECK_EQ(pair.target->GetText(), "你好");
+	CHECK_EQ(int(pair.Start()), 1500);
+	CHECK_EQ(int(pair.End()), 3000);
+	CHECK_EQ(int(pair.target->Start), 1500);
+	CHECK_EQ(int(pair.target->End), 3000);
+	CHECK_EQ(reloaded_binder.Rows()[1].source->GetText(), "Plain");
+	CHECK(!reloaded_binder.Rows()[1].linked);
+	CHECK_EQ(reloaded.Undo().CurrentCommitId(), 1);
+}
+
+TEST(bilingual_undo_restores_binding_state) {
+	using danket::BilingualSide;
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(bilingual_pair_events()));
+	danket::UndoManager &undo = context.Undo();
+	danket::BilingualBinder binder(context.Subs());
+	int const initial_commit = undo.CurrentCommitId();
+	CHECK_EQ(initial_commit, 1);
+	REQUIRE(binder.Rows().size() == 1);
+	CHECK(binder.Rows()[0].linked);
+
+	CHECK(binder.SetTime(0, agi::Time(3000), agi::Time(4500)));
+	CHECK_EQ(undo.UndoDescription(), "edit bilingual timing");
+	CHECK_EQ(undo.CurrentCommitId(), 2);
+
+	undo.Undo();
+	CHECK_EQ(undo.CurrentCommitId(), initial_commit);
+	int const commit_after_undo = undo.CurrentCommitId();
+	binder.Refresh();
+	CHECK_EQ(undo.CurrentCommitId(), commit_after_undo);
+	REQUIRE(binder.Rows().size() == 1);
+	CHECK(binder.Rows()[0].linked);
+	CHECK_EQ(binder.Rows()[0].sync_id, "row-01");
+	CHECK_EQ(int(binder.Rows()[0].Start()), 1000);
+	CHECK_EQ(int(binder.Rows()[0].End()), 2500);
+	CHECK_EQ(int(binder.Rows()[0].target->Start), 1000);
+	CHECK_EQ(int(binder.Rows()[0].target->End), 2500);
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "Hello");
+	CHECK_EQ(binder.Rows()[0].target->GetText(), "你好");
+	CHECK_EQ(binder.Rows()[0].target->Effect.get(), "sync-id:row-01;lang:dst");
+
+	undo.Redo();
+	binder.Refresh();
+	REQUIRE(binder.Rows().size() == 1);
+	CHECK_EQ(int(binder.Rows()[0].Start()), 3000);
+	CHECK_EQ(int(binder.Rows()[0].End()), 4500);
+
+	CHECK(binder.DeleteSide(0, BilingualSide::Target));
+	CHECK_EQ(context.Subs().Events.size(), std::size_t(1));
+	CHECK_EQ(undo.UndoDescription(), "delete bilingual line");
+
+	undo.Undo();
+	binder.Refresh();
+	CHECK_EQ(context.Subs().Events.size(), std::size_t(2));
+	REQUIRE(binder.Rows().size() == 1);
+	CHECK(binder.Rows()[0].linked);
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "Hello");
+	CHECK_EQ(binder.Rows()[0].target->GetText(), "你好");
+	CHECK_EQ(int(binder.Rows()[0].Start()), 3000);
+	CHECK_EQ(int(binder.Rows()[0].End()), 4500);
+	CHECK_EQ(binder.Rows()[0].source->Effect.get(), "sync-id:row-01;lang:src");
+	CHECK_EQ(binder.Rows()[0].target->Effect.get(), "sync-id:row-01;lang:dst");
+}
+
+TEST(bilingual_set_text_edits_existing_and_clears_stale_tag) {
+	using danket::BilingualSide;
+	std::string const events = bilingual_pair_events() +
+		bilingual_event("0:00:03.00", "0:00:04.00", "Default", "sync-id:row-01;lang:src", "Duplicate source");
+	danket::CoreContext context;
+	context.LoadFromText(bilingual_fixture(events));
+	danket::BilingualBinder binder(context.Subs());
+	REQUIRE(binder.Rows().size() == 2);
+	CHECK(binder.Rows()[0].linked);
+
+	CHECK(binder.SetText(0, BilingualSide::Source, "Hello edited"));
+	CHECK_EQ(binder.File().Events.size(), std::size_t(3));
+	CHECK_EQ(binder.Rows().size(), std::size_t(2));
+	CHECK(binder.Rows()[0].linked);
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "Hello edited");
+	CHECK_EQ(binder.Rows()[0].target->GetText(), "你好");
+	CHECK_EQ(binder.Rows()[0].source->Effect.get(), "sync-id:row-01;lang:src");
+	CHECK_EQ(binder.Rows()[0].target->Effect.get(), "sync-id:row-01;lang:dst");
+	CHECK_EQ(context.Undo().UndoDescription(), "edit bilingual text");
+
+	context.Undo().Undo();
+	binder.Refresh();
+	REQUIRE(binder.Rows().size() == 2);
+	CHECK_EQ(binder.Rows()[0].source->GetText(), "Hello");
+	CHECK_EQ(binder.Rows()[0].target->GetText(), "你好");
+
+	// The duplicate side is an unbound single row carrying a stale tag
+	auto const &duplicate = binder.Rows()[1];
+	CHECK(duplicate.sync_id.empty());
+	CHECK(!duplicate.linked);
+	REQUIRE(duplicate.source != nullptr);
+	CHECK_EQ(duplicate.source->GetText(), "Duplicate source");
+
+	CHECK(binder.SetText(1, BilingualSide::Source, ""));
+	CHECK_EQ(binder.File().Events.size(), std::size_t(3));
+	CHECK(binder.Rows()[0].linked);
+	CHECK(binder.Rows()[1].source->GetText().empty());
+	CHECK(binder.Rows()[1].source->Effect.get().empty());
+	CHECK_EQ(binder.Rows()[0].source->Effect.get(), "sync-id:row-01;lang:src");
+
+	danket::CoreContext plain_context;
+	plain_context.LoadFromText(bilingual_fixture(
+		bilingual_event("0:00:01.00", "0:00:02.00", "Default", "fade", "Styled")));
+	danket::BilingualBinder plain_binder(plain_context.Subs());
+	REQUIRE(plain_binder.Rows().size() == 1);
+	CHECK(plain_binder.Rows()[0].sync_id.empty());
+	CHECK(plain_binder.SetText(0, BilingualSide::Source, ""));
+	CHECK(plain_binder.Rows()[0].source->GetText().empty());
+	// A non-sync effect is not a stale tag and must be preserved
+	CHECK_EQ(plain_binder.Rows()[0].source->Effect.get(), "fade");
+
+	danket::CoreContext lone_context;
+	lone_context.LoadFromText(bilingual_fixture(bilingual_event(
+		"0:00:03.00", "0:00:04.00", "Default", "sync-id:row-09;lang:src", "Lone")));
+	danket::BilingualBinder lone_binder(lone_context.Subs());
+	REQUIRE(lone_binder.Rows().size() == 1);
+	CHECK_EQ(lone_binder.Rows()[0].sync_id, "row-09");
+	CHECK(lone_binder.SetText(0, BilingualSide::Source, ""));
+	CHECK(lone_binder.Rows()[0].sync_id.empty());
+	CHECK(lone_binder.Rows()[0].source->GetText().empty());
+	CHECK(lone_binder.Rows()[0].source->Effect.get().empty());
 }
 
 } // namespace

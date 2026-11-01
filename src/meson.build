@@ -9,6 +9,7 @@ danket_core_src = files(
     'ass_parser.cpp',
     'ass_style.cpp',
     'core/ass_io.cpp',
+    'core/bilingual_binder.cpp',
     'core/core_context.cpp',
     'core/undo_manager.cpp',
 )
